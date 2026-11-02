@@ -1,19 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-TARGET_DIR="${1:-$(pwd)}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+TARGET_DIR="."
+APP_TYPE="A"
+STACK="nextjs"
+
+# 위치 인자 및 플래그 인자(--target, --type, --stack) 모두 호환 지원
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --target)
+      TARGET_DIR="$2"
+      shift 2
+      ;;
+    --type)
+      APP_TYPE="$2"
+      shift 2
+      ;;
+    --stack)
+      STACK="$2"
+      shift 2
+      ;;
+    *)
+      if [[ "$TARGET_DIR" == "." && ! "$1" =~ ^- ]]; then
+        TARGET_DIR="$1"
+      fi
+      shift
+      ;;
+  esac
+done
+
+mkdir -p "${TARGET_DIR}"
 cd "${TARGET_DIR}"
 
 echo "================================================================"
-echo "🏗️ [FDE App Scaffolder] 4-Layer 아키텍처 및 0.0.0.0 서버 뼈대 생성"
+echo "🏗️ [FDE App Scaffolder] 4-Layer 아키텍처 (Type: ${APP_TYPE}, Stack: ${STACK}) 및 0.0.0.0 서버 뼈대 생성"
 echo "================================================================"
 
 # 1. 4대 레이어 디렉토리 구조 생성
 mkdir -p src/data src/core src/ai src/components public
 
-# 2. package.json 자동 생성 (0.0.0.0 바인딩 스크립트 포함)
+# 2. package.json 자동 생성 (0.0.0.0 바인딩 스크립트 및 상대/절대 호환 하네스 경로 포함)
 if [ ! -f "package.json" ]; then
-cat << 'EOF' > package.json
+cat << EOF > package.json
 {
   "name": "fde-mission-app",
   "private": true,
@@ -23,7 +52,7 @@ cat << 'EOF' > package.json
     "dev": "vite --host 0.0.0.0 --port 5173",
     "start": "vite --host 0.0.0.0 --port 5173",
     "build": "vite build",
-    "test:harness": "node /tmp/fde-kit/engine/deterministic_harness.mjs"
+    "test:harness": "node ${SCRIPT_DIR}/deterministic_harness.mjs"
   },
   "dependencies": {
     "react": "^18.2.0",
