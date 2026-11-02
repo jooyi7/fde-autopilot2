@@ -1,0 +1,21 @@
+# Codex CLI Configuration (SK hynix AI Hackathon)
+[agent]
+# 가이드라인 9장 권장 모델 (Sol 6.1, Terra 5.6, Luna 6, Sol 6.0 중 택1 / Astra 사용 금지)
+default_model = "Sol-6.1"
+fallback_model = "Terra-5.6"
+approval_mode = "auto-edit"
+
+[context]
+instructions_file = "AGENTS.md"
+ignore_patterns = [
+    "node_modules/**",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "__pycache__/**"
+]
+
+[execution]
+# 내장 Browser 미리보기 연결을 위해 0.0.0.0 바인딩 필수
+default_host = "0.0.0.0"
+timeout_seconds = 120
