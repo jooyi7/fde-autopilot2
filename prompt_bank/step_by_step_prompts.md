@@ -1,71 +1,73 @@
-# 🎯 FDE Autopilot 타임라인별 실전 프롬프트 뱅크 (v2.0 마스터 버전)
+# 🎯 FDE Autopilot 타임라인별 실전 프롬프트 뱅크 (v2.1 범용 마스터 버전)
 
 > **📌 사전 세팅 (시험 시작 직후 터미널에서 1회 실행)**
-> 1. `python3 /tmp/fde-kit/engine/workspace_profiler.py` 실행 -> `.fde_data_profile.md` 자동 생성 확인 (3-Sigma 임계치, 결측/중복, DM 질문 트리거 자동 도출)
-> 2. 터미널에 `codex` 실행 후 `/status` 및 `/model`에서 허용 모델(`Sol 6.1` 또는 `Luna 6`) 선택 (`Astra` 절대 선택 금지!)
+> 1. `python3 engine/workspace_profiler.py` 실행 -> `.fde_data_profile.md` 자동 생성 확인 (통계적 임계치, 결측/중복, 실무자 DM 질문 트리거 자동 도출)
+> 2. 터미널에 `codex` 실행 후 `/status` 및 `/model`에서 허용 모델(`Sol 6.1`, `Terra 5.6`, `Luna 6`, `Sol 6.0` 중 택1) 선택 (**`Astra` 절대 선택 금지!** 개인 API 키 사용 금지!)
+> 3. **외부 전송(`git push`)은 절대 금지**되며, 각 단계 완료 시 **로컬 `git add -A && git commit`**만 수행하여 작업 로그를 남깁니다.
 
 ---
 
-## [00:02] 실무자 에이전트(DM) 인터뷰 질문 (초반 탐색 + 도메인 타격)
-> 우측 DM 메신저에서 `업무 담당자` 선택 후 전송 (Shift+Enter 줄바꿈, Enter 전송).
-> **주의**: 처음 3분간 "AI", "자동화", "LLM" 같은 단어 사용 금지! `.fde_data_profile.md`의 5번 섹션에 도출된 트리거와 `/tmp/fde-kit/prompt_bank/domain_dm_playbook.md`의 질문을 결합하여 질문하세요.
+## [00:02] 실무자 에이전트(DM) 인터뷰 질문 (초반 탐색 + 엣지 케이스 확정)
+> 우측 DM 메신저에서 `업무 담당자` 선택 후 전송 (`Shift+Enter` 줄바꿈, `Enter` 전송).
+> **참고**: 플랫폼 사용법 문의는 `Cofa Helper`에게, 과제의 비즈니스/데이터 맥락 문의는 `업무 담당자`에게 질문합니다. `.fde_data_profile.md`의 5번 섹션에 도출된 트리거와 `docs_kit/stakeholder_inquiry.md`의 범용 템플릿을 결합하여 질문하세요.
 
 ### [1차 질문 전송 (현업 병목 에피소드 & 최우선 산출물 범위 확인)]
 ```text
-안녕하세요 담당자님! 과제 요구사항을 정확히 파악하고 현업에 꼭 맞는 도구를 설계하기 위해 먼저 여쭙고 싶습니다.
-최근 이 업무를 처리하시면서 가장 시간이 많이 소요되었거나 실수가 발생하기 쉬웠던 구체적인 병목 지점이 무엇이었는지 궁금합니다. 아울러 이번 1차 도구 도입 시 반드시 완벽히 동작해야 하는 1순위 핵심 기능과 과감히 제외해도 되는 부가 기능의 경계를 알려주시면 그에 맞춰 집중 구현하겠습니다.
+안녕하세요 담당자님! 과제 요구사항을 정확히 파악하고 실무에 꼭 맞는 시스템을 설계하기 위해 먼저 여쭙고 싶습니다.
+최근 이 업무를 처리하시면서 가장 시간이 많이 소요되었거나 오류가 발생하기 쉬웠던 구체적인 병목 지점이 무엇이었는지 궁금합니다. 아울러 이번 1차 시스템 도입 시 반드시 완벽히 동작해야 하는 1순위 핵심 기능과 과감히 제외해도 되는 부가 기능의 경계를 알려주시면 그에 맞춰 집중 구현하겠습니다.
 ```
 
 ### [2차 질문 전송 (데이터 프로파일링 기반 결측·중복·경계값 등호 확정)]
 > `.fde_data_profile.md`에서 발견된 실제 컬럼명/이상치를 넣어 질문하세요.
 ```text
-상세히 설명해주셔서 감사합니다. 제공된 데이터를 분석해보니 [특정 컬럼명]에 결측치(Null/-999 등)와 중복 식별자, 그리고 상태 플래그(CANCELLED/TEST 등)가 일부 포함되어 있습니다.
-1) 비정상 상태 플래그나 결측치가 있는 행은 집계 및 비율 계산 분모에서 완전히 제외하면 될까요?
+상세히 설명해주셔서 감사합니다. 제공된 데이터를 분석해보니 [특정 컬럼명]에 결측치(Null/-999 등)와 중복 식별자, 그리고 특수 상태 플래그(CANCELLED/TEST/INVALID 등)가 일부 포함되어 있습니다.
+1) 비정상 상태 플래그나 결측치가 있는 행은 전체 통계 집계 및 핵심 지표 계산 분모에서 완전히 제외하면 될까요, 아니면 별도의 오류 상태로 분류해 화면에 표시해야 할까요?
 2) 중복 식별자 발생 시 최신 타임스탬프 1건을 유지하는지, 그리고 임계치 판정 시 경계값 숫자와 정확히 일치할 때 이상(>=)과 초과(>) 중 어느 기준으로 판정하는지 확인 부탁드립니다!
 ```
 
 ---
 
-## [Step 1: 00:08] SPEC.md 및 CLAUDE.md 선행 생성 프롬프트 (터미널 1번 Codex)
-> 실무자 DM 1차 답변을 받은 직후 터미널 1번 Codex 입력창에 붙여넣으세요.
+## [Step 1: 00:08] SPEC.md 및 AGENTS.md 선행 확정 프롬프트 (터미널 1번 Codex)
+> 실무자 DM 1차 답변을 받은 직후 터미널 1번 Codex 입력창에 붙여넣으세요. (`README.md`와 실무자 DM 답변이 상충할 경우 실무자 DM 답변을 최신 기준으로 우선 적용합니다.)
 
 ```text
-먼저 /tmp/fde-kit/AGENTS.md를 읽고 핵심 원칙을 숙지해 줘.
-현재 작업 폴더의 README.md와 .fde_data_profile.md(데이터 프로파일링 및 DM 트리거 결과), 그리고 내가 실무자 DM으로 확인한 비즈니스 제약 조건을 반영해서, 코딩을 시작하기 전에 아래 2개의 문서를 루트 경로에 먼저 생성해 줘. (아직 애플리케이션 코드는 작성하지 마. 대용량 데이터 파일을 직접 cat으로 읽지 말고 .fde_data_profile.md 요약본만 참조해.)
+먼저 AGENTS.md를 읽고 핵심 엔지니어링 원칙을 숙지해 줘.
+현재 작업 폴더의 README.md와 .fde_data_profile.md(데이터 프로파일링 및 DM 트리거 결과), 그리고 내가 실무자 에이전트(DM)로 확인한 비즈니스 제약 조건을 반영해서, 코딩을 시작하기 전에 아래 문서를 루트 경로에 먼저 생성(또는 업데이트)해 줘. (아직 애플리케이션 코드는 작성하지 마. 토큰 절약을 위해 대용량 원본 데이터 파일을 직접 cat으로 읽지 말고 .fde_data_profile.md 요약본만 참조해.)
 
-1. SPEC.md (서면 합의서):
-- 현업 비즈니스 문제 정의 및 병목 원인
-- 실무자 DM 확인 불변 규칙 (결측/센티널 처리 기준, 중복 제거 기준, 취소 건 분모 제외 여부, 임계치 등호 >= vs > 기준 명시)
+1. SPEC.md (요구사항 서면 합의서 - 만약 README.md에서 요구한 별도 기획서 파일명이 있다면 해당 파일명으로도 복사 생성):
+- 비즈니스 문제 정의 및 핵심 병목 원인
+- 실무자 DM 확인 불변 규칙 (결측/센티널 처리 기준, 중복 제거 기준, 비정상 상태 건 분모 제외 여부, 임계치 등호 >= vs > 기준 명시, README와 상충 시 DM 기준 우선 적용 근거)
 - 정량적 성공 기준 표 (측정 지표, 현재값, 목표치, 검증 방법)
 - In-Scope (이번에 반드시 구현할 핵심 기능 및 예정 [구현 좌표: 파일명 - 함수명()] 자리 표시) vs Out-of-Scope (제외할 부가 기능: 복잡한 로그인/권한 등)
 - 7단계 진행 상태 트래커 ([STATE-1: 발굴] -> [STATE-2: 서면합의] -> [STATE-3: 스캐폴딩] -> [STATE-4: E2E v0] -> [STATE-5: 중간검증] -> [STATE-6: 수용확인/핸드오프] -> [STATE-7: 제출의식])
 
-2. CLAUDE.md (FDE 오케스트레이션 원칙):
-- 결정론 코어(80%) 원칙: 모든 수치 계산, 임계치(UCL/LCL) 판정, 정규식 필터링, 상태 전이는 100% 고정된 순수 함수(/src/core/rules.js 또는 대응 파이썬 모듈)로 작성한다.
-- AI 역할 제한(20%) 원칙: LLM(/src/ai/reporter.js)은 고정 코드가 판정한 JSON 결과를 바탕으로 자연어 해석, 피드백, 조치 가이드 초안을 생성하는 데만 사용한다.
-- 무중단 Fallback 원칙: LLM API 호출 지연(3초 초과)·실패 시 서비스가 멈추지 않고 0.1초 내 결정론 코어의 기본 판정 리포트를 즉시 반환한다.
-- 네트워크 & 보안 원칙: 서버는 반드시 0.0.0.0에 바인딩하며 개인 API 키를 하드코딩하지 않는다.
+2. AGENTS.md (Codex 오케스트레이션 원칙 점검):
+- 결정론 코어(80%) 원칙: 모든 수치 계산, 임계치 판정, 정규식 필터링, 상태 전이는 100% 고정된 순수 함수(/src/core/rules.js 또는 대응 파이썬 모듈)로 작성한다.
+- AI 역할 제한(20%) 원칙: AI 모듈(/src/ai/reporter.js)은 고정 코드가 판정한 JSON 결과를 바탕으로 자연어 해석, 피드백, 조치 가이드 초안을 생성하는 데만 사용한다.
+- 무중단 Fallback 원칙: AI API 호출 지연(3초 초과)·실패 시 서비스가 멈추지 않고 0.1초 내 결정론 코어의 기본 판정 리포트를 즉시 반환한다.
+- 네트워크 & 보안 원칙: 서버는 반드시 0.0.0.0에 바인딩하며 개인 API 키를 하드코딩하지 않는다. 외부 전송(git push)은 절대 금지하며 로컬 git commit만 수행한다.
 ```
+*(💡 Step 1 완료 후 터미널에서 `git add -A && git commit -m "docs: initialize SPEC.md and AGENTS.md"` 실행!)*
 
 ---
 
 ## [Step 2: 00:18] 4-Layer 스캐폴딩 & 0.0.0.0 E2E v0 관통 프롬프트 (터미널 1번 Codex)
-> `.fde_data_profile.md`가 추천한 블루프린트 파일명(type_a / type_b / type_c / type_d 중 택1)을 확인한 뒤 투입하세요.
+> `.fde_data_profile.md`가 추천한 범용 문제 아키타입(Archetype A: 지표 모니터링 대시보드 / B: 규칙·Diff 검증기 / C: 문서 근거 검색 RAG / D: 상태 머신 백오피스 중 택1)을 확인한 뒤 투입하세요.
 
 ```text
-이제 SPEC.md와 CLAUDE.md의 원칙, 그리고 /tmp/fde-kit/blueprints/ 폴더 내 이번 과제에 해당하는 블루프린트 구조와 .fde_data_profile.md의 실제 데이터 스키마를 결합하여 [STATE-3: 스캐폴딩] 및 [STATE-4: E2E v0] 단계를 진행해 줘. (기존 레거시 코드가 있다면 기존 API 엔드포인트와 테스트 호환성을 절대 깨뜨리지 마.)
+이제 SPEC.md와 AGENTS.md의 원칙, 그리고 이번 과제의 문제 아키타입(Archetype A~D 중 해당 유형) 구조와 .fde_data_profile.md의 실제 데이터 스키마를 결합하여 [STATE-3: 스캐폴딩] 및 [STATE-4: E2E v0] 단계를 진행해 줘. (기존 레거시 코드가 있다면 기존 API 엔드포인트와 테스트 호환성을 절대 깨뜨리지 마.)
 
 1. 아키텍처 4대 레이어 물리적 분리 구현:
 - src/data/samples.js (또는 데이터 로더 모듈): 과제 데이터 스키마에 맞춘 3종 골든 샘플(normal, warning, violation) 및 결측치/Null/센티널(-999) 안전 파서(sanitizeAndParseInput)
-- src/core/rules.js (또는 코어 엔진 모듈): 정규식 필터링, 임계치(UCL/LCL 또는 스펙 오차) 판정, 중복 제거, 점수/수율/통계 계산을 담당하는 100% 결정론적 순수 함수(evaluateCoreRules)
+- src/core/rules.js (또는 코어 엔진 모듈): 정규식 필터링, 임계치 판정, 중복 제거, 핵심 지표/통계/상태 계산을 담당하는 100% 결정론적 순수 함수(evaluateCoreRules)
 - src/ai/reporter.js: 코어의 판정 결과를 받아 자연어 요약·조치 가이드를 생성하는 함수(generateInsightWithFallback - 에러나 타임아웃 시 0.1초 내로 코어 수치 기반 표준 안전장치 리포트를 반환하는 Fallback 필수 포함)
-- src/components/Dashboard.jsx (또는 메인 UI): 화면 최상단에 평가자가 클릭 한 번으로 테스트할 수 있는 3종 골든 샘플 버튼([정상 샘플 입력], [경고(임계치) 샘플 입력], [위반/불량 샘플 입력]), 핵심 KPI 요약 카드, 시각화 차트/테이블, 판정 근거 및 AI 리포트 뷰어
+- src/components/Dashboard.jsx (또는 메인 UI): 화면 최상단에 평가자가 클릭 한 번으로 테스트할 수 있는 3종 골든 샘플 버튼([정상 샘플 입력], [경고(임계치) 샘플 입력], [위반/오류 샘플 입력]), 핵심 지표 요약 카드, 시각화 차트/테이블, 판정 근거 및 AI 리포트 뷰어
 
 2. E2E v0 우선 관통 및 0.0.0.0 서버 실행:
 - 상단 프리셋 버튼 3개를 클릭하거나 데이터를 입력해 실행 버튼을 누르면 즉시 결정론 코어 판정과 리포트가 화면에 렌더링되도록 End-to-End 파이프라인을 연결해 줘.
 - 웹 서버는 플랫폼 내 Browser 미리보기 도구에서 바로 열리도록 반드시 host 0.0.0.0으로 바인딩해서 실행하고, 리스닝 중인 실제 포트 번호를 알려줘.
 ```
-*(💡 Step 2 완료 후 컨텍스트에 불필요한 로그가 많이 쌓였다면 `/clear`를 한 번 실행해 토큰을 절약하세요!)*
+*(💡 Step 2 완료 후 내장 Browser 도구에서 포트 연결을 확인하고 `git add -A && git commit -m "feat: scaffold 4-layer architecture and e2e v0"` 실행! 컨텍스트에 불필요한 로그가 많이 쌓였다면 `/clear`를 실행해 토큰을 절약하세요!)*
 
 ---
 
@@ -73,10 +75,11 @@
 
 ```text
 [STATE-5: 중간검증]의 첫 번째 분해 작업이다. SPEC.md를 다시 읽고, UI나 AI 호출부는 건드리지 말고 오직 src/core/rules.js(또는 핵심 판정 모듈)의 결정론적 판정·계산 로직만 완벽하게 고도화해 줘.
-1. README.md, .fde_data_profile.md, SPEC.md(실무자 DM 확인 사항 포함)에 정의된 모든 비즈니스 규칙(임계치 등호 여부, 중복 제거, 취소 건 제외, 수식, 상태 전이)을 고정 코드로 정확히 구현해 줘.
+1. README.md, .fde_data_profile.md, SPEC.md(실무자 DM 확인 사항 포함)에 정의된 모든 비즈니스 규칙(임계치 등호 여부, 중복 제거, 비정상 상태 건 제외, 수식, 상태 전이)을 고정 코드로 정확히 구현해 줘.
 2. 빈 문자열(""), null, undefined, NaN, 센티널값(-999), 빈 배열이 들어와도 절대 크래시되지 않고 안전하게 예외 판정 객체를 반환하도록 방어 로직을 완벽히 넣어 줘.
-3. 구현 직후 node /tmp/fde-kit/engine/deterministic_harness.mjs (또는 프로젝트 단위 테스트) 명령어를 실행해서 정상 케이스, 경계값(Edge case), 위반 케이스, Null 방어, AI Fallback 시나리오가 모두 PASS하는지 터미널에 증명해 줘.
+3. 구현 직후 node engine/deterministic_harness.mjs 및 node engine/verify_core.mjs (또는 프로젝트 단위 테스트) 명령어를 실행해서 정상 케이스, 경계값(Edge case), 위반 케이스, Null 방어, AI Fallback 시나리오가 모두 PASS하는지 터미널에 증명해 줘.
 ```
+*(💡 통과 확인 후 `git add -A && git commit -m "feat: complete deterministic core rules and pass harness"` 실행!)*
 
 ---
 
@@ -88,34 +91,35 @@
 2. 사용자가 버튼을 빠르게 연타하거나 잘못된 포맷을 넣었을 때 UI가 죽지 않도록 입력 방어 처리를 추가해 줘.
 3. 작업 완료 후 SPEC.md 파일을 열어서 In-Scope의 각 요구사항 항목 옆에 실제로 구현된 파일 경로와 핵심 함수명(예: [구현 좌표: src/core/rules.js - evaluateCoreRules()])을 정확하게 매핑해서 업데이트해 줘.
 ```
+*(💡 에디터에서 외부 변경 충돌 시 "외부 변경 불러오기"로 동기화 후 `git add -A && git commit -m "feat: integrate AI fallback reporter and map SPEC coordinates"` 실행!)*
 
 ---
 
-## [Step 4-A: 01:20] HANDOFF.md 생성 프롬프트 (터미널 1번 Codex)
+## [Step 4-A: 01:20] HANDOFF.md 및 ARCHITECTURE_DECISIONS.md 생성 프롬프트 (터미널 1번 Codex)
 
 ```text
-이제 [STATE-6: 수용확인 및 핸드오프] 단계다. /tmp/fde-kit/docs_kit/HANDOFF_TEMPLATE.md의 구조를 참고하여 현재 우리 프로젝트의 실제 파일명과 함수명에 맞춘 HANDOFF.md 파일을 루트 경로에 생성해 줘. 반드시 아래 4가지를 실제 코드와 100% 일치하게 작성해야 해:
+이제 [STATE-6: 수용확인 및 핸드오프] 단계다. docs_kit/HANDOFF_TEMPLATE.md 및 docs_kit/ARCHITECTURE_DECISIONS.md의 구조를 참고하여 현재 우리 프로젝트의 실제 파일명과 함수명에 맞춘 HANDOFF.md와 SOLUTION_NOTES.md(또는 과제 README.md에서 요구한 제출 문서명)를 루트 경로에 생성해 줘. 반드시 아래 4가지를 실제 코드와 100% 일치하게 작성해야 해:
 1. 전체 아키텍처 및 데이터 흐름도 (입력 -> Data 정제 파서 -> Deterministic Core 80% -> AI Reporter & Fallback 20% -> UI 렌더링)
 2. 완료된 핵심 기능, 실무자 DM 반영 규칙 및 실제 코드 증거 좌표 표 (파일 경로 + 함수명 + 검증 결과)
 3. 핵심 엔지니어링 의사결정 근거 ([결정] - [근거] - [포기한 대안]: 왜 산술/규칙 판정과 AI 요약을 분리했는지, 왜 3종 골든 샘플과 0.1초 Fallback을 두었는지)
 4. 사후 서술형 문제 대비 3단계 기술 리스크 분석:
-   - (약점 지목): 실제 구현된 파일명과 함수명을 정확히 지목하여 구체적인 기술적 한계점 3가지 명시 (대용량 입력 시 단일 스레드 동기 순회 병목, 인메모리 상태 휘발성, 외부 LLM API 장애 시 재시도 큐 부재 등)
-   - (위험 파급): 해당 약점이 실제 현업/공정 현장에서 깨졌을 때 발생하는 비즈니스적·시스템적 파급 위험 설명
+   - (약점 지목): 실제 구현된 파일명과 함수명을 정확히 지목하여 구체적인 기술적 한계점 3가지 명시 (대용량 입력 시 단일 스레드 동기 순회 병목, 인메모리 상태 휘발성, 외부 AI API 장애 시 재시도 큐 부재 등)
+   - (위험 파급): 해당 약점이 실제 운영 현장에서 깨졌을 때 발생하는 비즈니스적·시스템적 파급 위험 설명
    - (검증 및 개선 계획): 더미 부하 스크립트를 통한 정량적 임계치 계측 방법과 단기(해시 캐싱/SQLite 영속화)·장기(스트리밍 파서/Web Worker 비동기 큐 도입) 개선 계획 제시
 ```
 
 ---
 
 ## [Step 4-B: 01:30] 터미널 2번 독립 감사관(Auditor) & Final Gatekeeper 실행 프롬프트
-> 새 터미널(2번)을 열고 먼저 아래 두 스크립트를 실행합니다:
-> 1) `bash /tmp/fde-kit/engine/auditor_worker.sh`
-> 2) `python3 /tmp/fde-kit/engine/final_gatekeeper.py`
+> 새 터미널(2번)을 열고 먼저 아래 스크립트를 실행합니다:
+> 1) `python3 engine/final_gatekeeper.py`
+> 2) `python3 engine/release_gate.py`
 > 그 다음 터미널 2번에서 `codex`를 켜고 아래 프롬프트를 입력합니다.
 
 ```text
-너는 메인 개발 세션과 분리된 독립 교차 검증 감사관(Auditor)이다. /tmp/fde-kit/AUDITOR_GUIDE.md 및 방금 출력된 감사 리포트를 참고하여 현재 워크스페이스의 README.md, SPEC.md, CLAUDE.md, HANDOFF.md와 실제 소스코드를 대조하여 최종 감사해 줘.
+너는 메인 개발 세션과 분리된 독립 교차 검증 감사관(Auditor)이다. AUDITOR_GUIDE.md 및 방금 출력된 게이트키퍼 리포트를 참고하여 현재 워크스페이스의 README.md, SPEC.md, AGENTS.md, HANDOFF.md와 실제 소스코드를 대조하여 최종 감사해 줘.
 1. 문서에 적힌 요구사항이나 [구현 좌표] 중 실제 코드의 파일명·함수명과 다르거나 누락(Drift)된 부분을 찾아 즉시 일치시켜 줘.
 2. 사용자가 빈 값, 특수문자, 깨진 JSON/CSV 데이터를 넣었을 때 화면이나 서버가 깨지는(Runtime Error) 취약 지점을 찾아 즉시 방어 코드(try-catch, Optional Chaining)를 패치해 줘.
 3. SPEC.md의 7단계 진행 상태 트래커 체크박스를 모두 [x] 완료 상태로 업데이트하고, 임시 스캔 파일(.fde_data_profile.md, .fde_audit_report.md)을 삭제하여 Git 작업 트리를 깨끗하게 정리해 줘.
-4. 마지막으로 python3 /tmp/fde-kit/engine/final_gatekeeper.py 를 한 번 더 실행해 모든 항목이 PASS이고 후속 서술형 암기 브리핑이 정상 출력되는지 확인해 줘.
+4. 모든 수정이 끝나면 로컬 git add -A && git commit -m "chore: pass final audit and release gate" 를 실행한 뒤, 마지막으로 python3 engine/final_gatekeeper.py 를 실행해 모든 항목이 PASS이고 후속 서술형 암기 브리핑이 정상 출력되는지 확인해 줘.
 ```
