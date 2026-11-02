@@ -1,9 +1,13 @@
-# Codex CLI Configuration (SK hynix AI Hackathon)
+# Codex CLI Configuration (Domain-Agnostic Standard)
 [agent]
-# 가이드라인 9장 권장 모델 (Sol 6.1, Terra 5.6, Luna 6, Sol 6.0 중 택1 / Astra 사용 금지)
+# 가이드라인 9장 권장 모델 (Sol 6.1, Terra 5.6, Luna 6, Sol 6.0 중 택1 / Astra 사용 절대 금지)
 default_model = "Sol-6.1"
 fallback_model = "Terra-5.6"
 approval_mode = "auto-edit"
+
+[project]
+# 범용 문제 해결 아키타입 (A: 대시보드/지표모니터링, B: 규칙검증/Diff알람, C: 문서근거검색/RAG, D: 상태머신/백오피스)
+default_type = "A"
 
 [context]
 instructions_file = "AGENTS.md"
@@ -12,7 +16,10 @@ ignore_patterns = [
     ".git/**",
     "dist/**",
     "build/**",
-    "__pycache__/**"
+    "__pycache__/**",
+    ".autopilot/**",
+    ".fde_data_profile.md",
+    ".fde_audit_report.md"
 ]
 
 [execution]
