@@ -181,3 +181,25 @@
   2. **5가지 대안 중 현재 아키텍처를 선정한 이유와 책임 소재(Accountability)**: LLM 단독 처리나 무거운 DB를 거절하고, 오판 책임을 명확히 통제하기 위해 산술 판정(80% 코어)과 해석(20% AI)을 분리했으며 최종 승인은 감사 로그와 함께 담당자에게 귀속시켰다는 점
   3. **실무자 에이전트(DM)와 협의하여 처리한 예외 기준 1개**: 결측치(`Null`/`-999`) 분리 기준 및 임계치 경계값 등호(`>=` vs `>`) 판정 기준
   4. **현재 구현의 한계점과 개선 방향 (3단 논법)**: 대용량 입력 시 단일 스레드 인메모리 순회 병목(약점) $\rightarrow$ 동시 유입 시 화면 블로킹 및 지연 위험(파급 위험) $\rightarrow$ 더미 부하 테스트로 임계치 계측 후 해시 캐싱·SQLite 영속화·Web Worker 비동기 큐 도입(검증 및 개선 계획)
+
+---
+
+## 🔬 부록: SK하이닉스 5대 현업 도메인 전용 레퍼런스 솔버 (`engine/solver_*.py`) 활용 가이드
+
+이번 `v3.0` 패키지에는 SK하이닉스 5대 출제 도메인의 핵심 병목을 해결하는 **5개의 결정론적 도메인 솔버**가 탑재되어 있습니다. `workspace_profiler.py` 실행 시 과제 데이터셋과 `README.md`를 스캔하여 자동으로 매핑되며, 아래 명령어로 언제든 단독 실행 및 검증할 수 있습니다.
+
+1. **`engine/solver_overlay.py` (이천 포토기술팀 - Overlay 품질 및 장비 운영)**
+   * **핵심 해결 로직**: ① 1~3차 고차 비선형 웨이퍼 변형(HOWA) + 전공정(Etch/Dep) 박막 스트레스 Feed-forward APC 결합 보정, ② 웨이퍼 엣지(Edge) 취약도 기반 스마트 샘플링(Metrology TAT 절감), ③ 스캐너 Chuck-to-Chuck vs 식각 챔버 원인 귀속 판별 및 대기시간(Queue Time) 고려 최적 스캐너 라우팅.
+2. **`engine/solver_material.py` (SK하이닉스 소재품질팀 - 신규 소재 및 공급사 변경 검토)**
+   * **핵심 해결 로직**: ① CoA 스펙 내 불량(In-Spec Excursion) 탐지를 위한 스펙트럼 화학 지문(Fingerprint Cosine 유사도 & 미측정 피크) 분석, ② Mother Lot 간 $C_{pk}$ 산포 및 양산(HVM) 배관 체류시간·펌프 전단응력 가속 열화 평가, ③ 하위 2·3차 공급사(Sub-tier) 무단 4M 변경 은폐 및 계보(Genealogy) 추적 감사.
+3. **`engine/solver_market.py` (SK하이닉스 시장전략팀 - 메모리 시장 및 경쟁사 실적 분석)**
+   * **핵심 해결 로직**: ① 마이크론(8월 결산) vs SK하이닉스/삼성전자(12월 결산) Calendarization(CQ) 시점 정규화 및 통화/Bit 단위 단일화, ② 고부가 HBM3E/DDR5 확대로 인한 Blended ASP 착시를 발라내는 $P 	imes Q 	imes Mix$ 변동 분해, ③ 어닝콜 IR 낙관 발언과 실제 재무 선행지표(재고일수 DIO, CAPEX 집행률) 간의 모순(Red Flag) 자동 적발.
+4. **`engine/solver_value_chain_biz.py` (경영전략팀 시장분석 - `skhynix-value-chain-business-persona`) [신규 추가]**
+   * **핵심 해결 로직**: ① 전방 CSP 수요 충격이 16개월 장비 리드타임과 맞물려 증폭되는 채찍 효과(Bullwhip Effect) 및 외부 TSMC CoWoS 패키징/베이스 다이 병목에 의한 출하 상한선(Ceiling) 계산, ② HBM 다이 페널티(Die Penalty)와 Bit당 설비투자(Capital Intensity)를 반영한 WACC 대비 ROIC 최적 포트폴리오 배분, ③ 대중국 장비 규제 및 관세 충격에 대응하는 Fab 간 물량 스왑 동적 시나리오 트리.
+5. **`engine/solver_curriculum.py` (반도체 산업교육 - `skhynix-value-chain-educator-persona`)**
+   * **핵심 해결 로직**: ① 역추적(Backtracking) 및 Kahn 위상정렬 기반 선수과목 DAG 검증(순환 참조 적발 및 시간 상한 이연), ② 비전공자 오개념 방지를 위한 `[직관적 비유 + 공학적 한계 교정]` 2-Layer 설명 가드레일, ③ `[물리적 한계 -> 기술 해법 -> 공정 지표 개선 -> 재무/수익성 임팩트]` 4단계 밸류체인 스토리라인 및 직무별(구매/재무/엔지니어) 맞춤형 소크라틱 퀴즈 생성.
+
+* **5대 도메인 솔버 일괄 무결성 자가진단 명령어 (터미널 3)**:
+  ```bash
+  python3 engine/blackbox_emulator.py --verify-solvers
+  ```
