@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * FDE Deterministic Core (80%) & AI Fallback (20%) Verification Harness
- * 실행: node /tmp/fde-kit/engine/deterministic_harness.mjs
+ * FDE Deterministic Core (80%) & AI Fallback (20%) Verification Harness (v3.0 - 5-Domain Ready)
+ * 실행: node engine/deterministic_harness.mjs
  */
 import fs from "fs";
 import path from "path";
@@ -10,7 +10,7 @@ import { pathToFileURL } from "url";
 const WORKSPACE = process.cwd();
 
 console.log("================================================================");
-console.log("🧪 [FDE Harness Engine] 결정론 코어 & Fallback 무결성 검증 루프");
+console.log("🧪 [FDE Harness Engine v3.0] 결정론 코어 & 5대 도메인 무결성 검증 루프");
 console.log("================================================================");
 
 // 1. 프로젝트 내 구현된 코어 모듈 및 샘플 모듈 자동 탐색
@@ -54,23 +54,61 @@ for (const rel of candidateSamplePaths) {
   }
 }
 
-// 2. 결정론 코어 평가 함수 추출 또는 표준 검증 시뮬레이터 구동
+// 2. 결정론 코어 평가 함수 추출 또는 표준 5-도메인 검증 시뮬레이터 구동
 const evalFn =
   loadedCore?.evaluateCoreRules ||
   loadedCore?.evaluate ||
   loadedCore?.analyzeCore ||
   loadedCore?.default ||
   function defaultDeterministicCore(input) {
-    if (input === null || input === undefined || input === "" || (typeof input === "object" && Object.keys(input).length === 0)) {
-      return { status: "VIOLATION", safeHandled: true, score: 0, reason: "Empty or malformed input safely blocked by deterministic guard" };
+    if (
+      input === null ||
+      input === undefined ||
+      input === "" ||
+      (typeof input === "object" && !Array.isArray(input) && Object.keys(input).length === 0)
+    ) {
+      return {
+        status: "VIOLATION",
+        ruleId: "CORE-GUARD-EMPTY",
+        safeHandled: true,
+        score: 0,
+        reason: "Empty or malformed input safely blocked by deterministic guard"
+      };
+    }
+    if (input?.value === -999 || input?.value === -9999 || input?.status === "INVALID") {
+      return {
+        status: "VIOLATION",
+        ruleId: "CORE-GUARD-SENTINEL",
+        safeHandled: true,
+        score: 0,
+        reason: "Sentinel (-999) or INVALID status record isolated from aggregation denominator"
+      };
     }
     if (input?.mode === "WARNING" || (typeof input?.value === "number" && input.value >= 80 && input.value < 95)) {
-      return { status: "WARNING", safeHandled: true, score: 75, reason: "Boundary threshold approached (80% ~ 95% zone)" };
+      return {
+        status: "WARNING",
+        ruleId: "CORE-RULE-EDGE-WARN",
+        safeHandled: true,
+        score: 75,
+        reason: "Boundary threshold approached (80% <= value < 95%)"
+      };
     }
     if (input?.mode === "VIOLATION" || (typeof input?.value === "number" && (input.value >= 95 || input.value < 0))) {
-      return { status: "VIOLATION", safeHandled: true, score: 20, reason: "Critical spec limit exceeded" };
+      return {
+        status: "VIOLATION",
+        ruleId: "CORE-RULE-SPEC-OUT",
+        safeHandled: true,
+        score: 20,
+        reason: "Critical spec limit exceeded (>= USL)"
+      };
     }
-    return { status: "NORMAL", safeHandled: true, score: 98, reason: "All parameters within nominal specification" };
+    return {
+      status: "NORMAL",
+      ruleId: "CORE-RULE-NOMINAL",
+      safeHandled: true,
+      score: 98,
+      reason: "All parameters within nominal specification"
+    };
   };
 
 const samples = loadedSamples?.GOLDEN_SAMPLES || {
@@ -79,12 +117,13 @@ const samples = loadedSamples?.GOLDEN_SAMPLES || {
   violation: { mode: "VIOLATION", value: 112, label: "규정/스펙 위반 샘플" }
 };
 
-// 3. 4대 필수 시나리오 테스트 실행 (정상 / 경계 / 위반 / 파괴적 Null 입력)
+// 3. 5대 필수 시나리오 테스트 실행 (정상 / 경계 / 위반 / 파괴적 Null / 센티널 -999 방어)
 const testMatrix = [
-  { id: "TEST-01 [정상 케이스]", payload: samples.normal, expectSafe: true },
-  { id: "TEST-02 [경계값(Edge) 케이스]", payload: samples.warning, expectSafe: true },
-  { id: "TEST-03 [위반/불량 케이스]", payload: samples.violation, expectSafe: true },
-  { id: "TEST-04 [파괴적 Null/빈값 방어]", payload: null, expectSafe: true }
+  { id: "TEST-01 [정상 케이스 (Normal)]", payload: samples.normal, expectSafe: true },
+  { id: "TEST-02 [경계값 케이스 (Warning Edge)]", payload: samples.warning, expectSafe: true },
+  { id: "TEST-03 [위반/불량 케이스 (Violation)]", payload: samples.violation, expectSafe: true },
+  { id: "TEST-04 [파괴적 Null/빈값 방어]", payload: null, expectSafe: true },
+  { id: "TEST-05 [센티널(-999) 및 INVALID 플래그 격리]", payload: { value: -999, status: "INVALID" }, expectSafe: true }
 ];
 
 let passCount = 0;
@@ -103,7 +142,7 @@ for (const tc of testMatrix) {
   }
 }
 
-// 4. AI 20% 레이어 장애 유발 및 Fallback 무중단 복구 검증
+// 4. AI 20% 레이어 장애 유발 및 0.1초 내 Fallback 무중단 복구 검증
 console.log("----------------------------------------------------------------");
 console.log("🛡️ [Fallback Simulation] LLM API 타임아웃/에러 시 안전장치 검증");
 
@@ -118,14 +157,15 @@ async function verifyFallbackPipeline(coreOutput) {
       source: "DETERMINISTIC_FALLBACK_ENGINE",
       recoveredFrom: err.message,
       status: coreOutput.status || "WARNING",
-      summary: `[무중단 안전장치 리포트] AI 응답 지연(${err.message})이 감지되어 결정론 코어 판정 결과를 즉시 반환합니다. 현재 판정 상태는 [${coreOutput.status || "CHECK"}]이며, 현장 표준 SOP에 따른 1차 조치가 유효합니다.`
+      ruleId: coreOutput.ruleId || "FALLBACK-SOP-01",
+      summary: `[무중단 안전장치 리포트] AI 응답 지연(${err.message})이 감지되어 결정론 코어 판정 결과(${coreOutput.ruleId || "CORE"})를 즉시 반환합니다. 현재 판정 상태는 [${coreOutput.status || "CHECK"}]이며, 현장 표준 SOP에 따른 1차 조치가 유효합니다.`
     };
   }
 }
 
 const fallbackRes = await verifyFallbackPipeline(evalFn(samples.warning));
 if (fallbackRes && fallbackRes.source === "DETERMINISTIC_FALLBACK_ENGINE") {
-  console.log(`🟢 [PASS] TEST-05 [AI 장애 우회 Fallback]`);
+  console.log(`🟢 [PASS] TEST-06 [AI 장애 우회 0.1초 Fallback 복구]`);
   console.log(`   ↳ 복구 결과: ${fallbackRes.summary}`);
   passCount++;
 }
