@@ -1,0 +1,79 @@
+{
+  "detected_domain": "UNIVERSAL",
+  "domain": "UNIVERSAL",
+  "source": "workspace_multi_table_semantic_router",
+  "status": "WARNING",
+  "ruleId": "UNIV-RULE-ANOMALY-OR-CAP-WARN",
+  "optimization_method": "default",
+  "optimality": "HEURISTIC",
+  "shaped_input_payload": {
+    "domain": "UNIVERSAL",
+    "records": [],
+    "tasks": [],
+    "inquiries": [],
+    "spec_limits": {},
+    "documents": [],
+    "total_budget": 1000.0,
+    "bus_seat_capacity": 45,
+    "query": "핵심 스펙 기준, 보안/금지 구역 및 이상 발생 시 표준 조치 규정"
+  },
+  "solution": {
+    "domain": "UNIVERSAL_OPS",
+    "status": "WARNING",
+    "ruleId": "UNIV-RULE-ANOMALY-OR-CAP-WARN",
+    "tabular_eda_and_root_cause": {
+      "valid_row_count": 0,
+      "isolated_anomaly_count": 0,
+      "column_statistics": {},
+      "group_by_summaries": {},
+      "time_series_drift_alerts": [],
+      "root_cause_correlations": [],
+      "spec_violations": []
+    },
+    "constrained_optimization_plan": {
+      "objective_mode": "MAXIMIZE_VALUE_PER_COST",
+      "total_budget_limit": 1000.0,
+      "utilized_budget": 0.0,
+      "budget_utilization_pct": 0.0,
+      "total_capacity_limit": 100.0,
+      "utilized_capacity": 0.0,
+      "total_objective_value_achieved": 0.0,
+      "unmet_mandatory_ids": [],
+      "selected_count": 0,
+      "deferred_count": 0,
+      "rejected_restricted_count": 0,
+      "selected_plan": [],
+      "deferred_items": [],
+      "rejected_restricted_items": [],
+      "multi_period_diversity_roster": [],
+      "capacitated_fleet_dispatch_plan": [],
+      "spatial_set_cover_plan": {
+        "selected_Placements": [],
+        "covered_zones": [],
+        "blind_spot_remaining_zones": []
+      },
+      "interval_conflict_resolution": {
+        "scheduled_non_overlapping": [],
+        "resolved_conflicts": []
+      }
+    },
+    "document_citation_rag": {
+      "query": "핵심 스펙 기준, 보안/금지 구역 및 이상 발생 시 표준 조치 규정",
+      "out_of_scope": true,
+      "matched_citations": []
+    },
+    "batch_inquiry_triage": [],
+    "configuration_diff_audit": {
+      "diff_evaluated": false,
+      "added_ids": [],
+      "removed_ids": [],
+      "modified_ids": []
+    }
+  },
+  "pre_opt_diagnosis": {
+    "metric_classification": "BALANCED_TRADE_OFF",
+    "dominant_metric": "BALANCED",
+    "bottleneck_nature": "COMPUTE_HEAVY_SIMULATION_BOUND",
+    "recommended_strategy": "sa_or_anytime_bnb"
+  }
+}

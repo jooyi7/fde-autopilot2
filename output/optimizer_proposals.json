@@ -1,0 +1,106 @@
+{
+  "pre_opt_diagnosis": {
+    "workspace": ".",
+    "diagnostics_elapsed_ms": 2.81,
+    "evaluation_metric_axis": {
+      "metric_classification": "BALANCED_TRADE_OFF",
+      "dominant_metric": "BALANCED",
+      "accuracy_score": 245.5,
+      "speed_score": 211.5,
+      "accuracy_top_keywords": [
+        {
+          "keyword": "eva",
+          "count": 21,
+          "score": 63.0
+        },
+        {
+          "keyword": "정확도",
+          "count": 13,
+          "score": 39.0
+        },
+        {
+          "keyword": "cpk",
+          "count": 11,
+          "score": 33.0
+        },
+        {
+          "keyword": "오차",
+          "count": 13,
+          "score": 32.5
+        },
+        {
+          "keyword": "cost",
+          "count": 4,
+          "score": 10.0
+        }
+      ],
+      "speed_top_keywords": [
+        {
+          "keyword": "tat",
+          "count": 43,
+          "score": 129.0
+        },
+        {
+          "keyword": "실시간",
+          "count": 21,
+          "score": 52.5
+        },
+        {
+          "keyword": "속도",
+          "count": 7,
+          "score": 14.0
+        },
+        {
+          "keyword": "처리량",
+          "count": 2,
+          "score": 6.0
+        },
+        {
+          "keyword": "latency",
+          "count": 1,
+          "score": 3.0
+        }
+      ],
+      "strategic_recommendation": "시간 제약 하에서 정확도를 극대화해야 하는 복합 과제입니다. 타임아웃 가드레일이 포함된 B&B 또는 Simulated Annealing을 권장합니다."
+    },
+    "bottleneck_nature_axis": {
+      "bottleneck_nature": "COMPUTE_HEAVY_SIMULATION_BOUND",
+      "total_rows": 0,
+      "max_table_rows": 0,
+      "total_workspace_mb": 1.01,
+      "max_combinatorial_items_n": 0,
+      "algorithmic_risk_level": "LOW",
+      "io_microbenchmark_ms": 0.001,
+      "bottleneck_summary": "평가 시나리오 수가 많은 연속 최적화 문제입니다. 황금분할 탐색이나 파레토 프론티어로 평가 횟수를 단축하십시오.",
+      "recommended_optimization_recipes": [
+        "황금분할 1차원 수렴(15회 평가)",
+        "시뮬레이션 조기 수렴(Early Convergence) 판정"
+      ]
+    },
+    "integrated_decision": {
+      "quadrant": "BALANCED × COMPUTE_HEAVY_SIMULATION_BOUND",
+      "recommended_primary_strategy": "sa_or_anytime_bnb",
+      "config_toml_recommended_settings": {
+        "optimization.target_metric": "balanced",
+        "optimization.preferred_strategy": "heuristic",
+        "bottleneck.combinatorial_exact_limit": 32,
+        "bottleneck.enable_multiprocessing": false
+      }
+    }
+  },
+  "views": {},
+  "proposals": [],
+  "questions": [],
+  "environment": {
+    "numpy": true,
+    "scipy": true,
+    "pulp": false,
+    "ortools": false,
+    "z3": false,
+    "sklearn": true,
+    "lightgbm": false,
+    "catboost": false,
+    "xgboost": true,
+    "torch": true
+  }
+}
