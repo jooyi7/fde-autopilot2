@@ -87,7 +87,7 @@ def load_all_workspace_assets(root: Path) -> Dict[str, Any]:
 
             if lower.endswith((".csv", ".tsv")):
                 try:
-                    rows = read_delimited_table(fpath, max_rows=3000)
+                    rows = read_delimited_table(fpath, max_rows=100000)
                     if rows:
                         tables[rel] = rows
                 except Exception:
@@ -96,7 +96,7 @@ def load_all_workspace_assets(root: Path) -> Dict[str, Any]:
                 try:
                     rows = []
                     for idx, line in enumerate(read_text_auto_encoding(fpath).splitlines()):
-                        if idx >= 3000:
+                        if idx >= 100000:
                             break
                         line = line.strip()
                         if line:
@@ -109,7 +109,7 @@ def load_all_workspace_assets(root: Path) -> Dict[str, Any]:
                 try:
                     data = json.loads(read_text_auto_encoding(fpath))
                     if isinstance(data, list) and data and isinstance(data[0], dict):
-                        tables[rel] = data[:3000]
+                        tables[rel] = data[:100000]
                     elif isinstance(data, dict):
                         json_objects[rel] = data
                 except Exception:
@@ -120,13 +120,13 @@ def load_all_workspace_assets(root: Path) -> Dict[str, Any]:
                     conn.row_factory = sqlite3.Row
                     cur = conn.cursor()
                     for (tname,) in cur.execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall():
-                        db_rows = [dict(r) for r in cur.execute(f"SELECT * FROM '{tname}' LIMIT 3000;").fetchall()]
+                        db_rows = [dict(r) for r in cur.execute(f"SELECT * FROM '{tname}' LIMIT 100000;").fetchall()]
                         if db_rows:
                             tables[f"{rel}::{tname}"] = db_rows
                     conn.close()
                 except Exception:
                     pass
-            elif lower.endswith((".md", ".txt")) and fname not in SKIP_MD_FILES:
+            elif lower.endswith((".md", ".txt")) and fname not in SKIP_MD_FILES and not fname.startswith("fde_"):
                 try:
                     txt = read_text_auto_encoding(fpath).strip()
                     if txt:
@@ -189,8 +189,8 @@ def auto_join_tables_fact_first(tables: Dict[str, List[Dict[str, Any]]]) -> List
         if not shared_keys_lower:
             continue
 
-        # Use up to 2 shared keys as composite key to prevent overwriting multi-quarter or multi-lot dimension rows
-        active_keys = shared_keys_lower[:2]
+        # Use all shared keys as composite key to prevent overwriting multi-quarter or multi-lot dimension rows
+        active_keys = shared_keys_lower
         b_keys = [base_cols[k] for k in active_keys]
         o_keys = [other_cols[k] for k in active_keys]
 

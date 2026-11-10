@@ -72,7 +72,7 @@ cat << EOF > package.json
     "dev": "vite --host 0.0.0.0 --port 5173",
     "start": "vite --host 0.0.0.0 --port 5173",
     "build": "vite build",
-    "test:harness": "node ${SCRIPT_DIR}/deterministic_harness.mjs"
+    "test:harness": "node engine/deterministic_harness.mjs"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -116,6 +116,11 @@ function fdePythonSolverBridge() {
               VALUE_CHAIN: 'solver_value_chain_biz.py',
               EDUCATOR: 'solver_curriculum.py',
               UNIVERSAL: 'solver_universal.py',
+              TYPE_A: 'solver_typeA.py',
+              TYPE_B: 'solver_typeB.py',
+              TYPE_C: 'solver_typeC.py',
+              TYPE_D: 'solver_typeD.py',
+              TYPE_E: 'solver_typeE.py',
             };
             const scriptName = solverMap[domain] || 'solver_universal.py';
             const scriptPath = path.resolve(process.cwd(), 'engine', scriptName);

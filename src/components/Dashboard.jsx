@@ -92,6 +92,11 @@ export default function MainWorkspaceView({ initialArchetype = "A" }) {
     setAiReport(report);
   };
 
+  // 컴포넌트 마운트 시 실제 워크스페이스 분석 결과(output/result.json 또는 /api/workspace-data) 자동 로드
+  useEffect(() => {
+    handleLoadWorkspaceFiles();
+  }, []);
+
   useEffect(() => {
     const preset = DOMAIN_GOLDEN_SAMPLES[activeDomain]?.[sampleType] || DOMAIN_GOLDEN_SAMPLES.OVERLAY.normal;
     setRawJsonText(JSON.stringify(preset, null, 2));
@@ -102,21 +107,39 @@ export default function MainWorkspaceView({ initialArchetype = "A" }) {
     setWhatIfMultiplier(mult);
     try {
       const baseObj = JSON.parse(rawJsonText);
-      if (baseObj.m3s_spec_nm !== undefined) baseObj.m3s_spec_nm = Number((2.0 * mult).toFixed(2));
+      // 원본 기준값을 보존하며 배율 적용 (수치 증발 및 하드코딩 덮어쓰기 원천 방지)
+      if (baseObj.m3s_spec_nm !== undefined) {
+        if (baseObj._orig_m3s_spec_nm === undefined) baseObj._orig_m3s_spec_nm = baseObj.m3s_spec_nm;
+        baseObj.m3s_spec_nm = Number((baseObj._orig_m3s_spec_nm * mult).toFixed(2));
+      }
       if (baseObj.specs && typeof baseObj.specs === "object") {
-        baseObj.min_cpk = Number((1.33 / Math.max(mult, 0.5)).toFixed(2));
+        if (baseObj._orig_min_cpk === undefined) baseObj._orig_min_cpk = baseObj.min_cpk ?? 1.33;
+        baseObj.min_cpk = Number((baseObj._orig_min_cpk / Math.max(mult, 0.5)).toFixed(2));
         for (const k of Object.keys(baseObj.specs)) {
-          const baseUsl = k.toLowerCase().includes("moisture") ? 20.0 : 5.0;
-          baseObj.specs[k].USL = Number((baseUsl * mult).toFixed(2));
+          if (!baseObj.specs[k]._orig_USL) baseObj.specs[k]._orig_USL = baseObj.specs[k].USL ?? (k.toLowerCase().includes("moisture") ? 20.0 : 5.0);
+          baseObj.specs[k].USL = Number((baseObj.specs[k]._orig_USL * mult).toFixed(2));
         }
       }
       if (baseObj.pq_mix_periods?.curr) {
-        baseObj.pq_mix_periods.curr.hbm_bit_share_pct = Math.min(60, Math.max(5, Math.round(20 * mult)));
-        baseObj.tsv_packaging_cap_bgb = Number((12.5 * mult).toFixed(2));
+        if (baseObj.pq_mix_periods.curr._orig_hbm_bit_share_pct === undefined) {
+          baseObj.pq_mix_periods.curr._orig_hbm_bit_share_pct = baseObj.pq_mix_periods.curr.hbm_bit_share_pct ?? 20;
+        }
+        baseObj.pq_mix_periods.curr.hbm_bit_share_pct = Math.min(80, Math.max(5, Math.round(baseObj.pq_mix_periods.curr._orig_hbm_bit_share_pct * mult)));
+        if (baseObj._orig_tsv_cap === undefined) baseObj._orig_tsv_cap = baseObj.tsv_packaging_cap_bgb ?? 12.5;
+        baseObj.tsv_packaging_cap_bgb = Number((baseObj._orig_tsv_cap * mult).toFixed(2));
       }
-      if (baseObj.total_budget !== undefined) baseObj.total_budget = Math.round(250 * mult);
-      if (baseObj.tsmc_cowos_alloc_bgb !== undefined) baseObj.tsmc_cowos_alloc_bgb = Number((13.5 * mult).toFixed(2));
-      if (baseObj.learner_profile?.max_hours !== undefined) baseObj.learner_profile.max_hours = Math.round(24 * mult);
+      if (baseObj.total_budget !== undefined) {
+        if (baseObj._orig_total_budget === undefined) baseObj._orig_total_budget = baseObj.total_budget;
+        baseObj.total_budget = Math.round(baseObj._orig_total_budget * mult);
+      }
+      if (baseObj.tsmc_cowos_alloc_bgb !== undefined) {
+        if (baseObj._orig_tsmc_cowos === undefined) baseObj._orig_tsmc_cowos = baseObj.tsmc_cowos_alloc_bgb;
+        baseObj.tsmc_cowos_alloc_bgb = Number((baseObj._orig_tsmc_cowos * mult).toFixed(2));
+      }
+      if (baseObj.learner_profile?.max_hours !== undefined) {
+        if (baseObj.learner_profile._orig_max_hours === undefined) baseObj.learner_profile._orig_max_hours = baseObj.learner_profile.max_hours;
+        baseObj.learner_profile.max_hours = Math.round(baseObj.learner_profile._orig_max_hours * mult);
+      }
       setRawJsonText(JSON.stringify(baseObj, null, 2));
       runPipeline(baseObj, activeDomain, simulateAiError);
     } catch (_) {}
@@ -128,9 +151,10 @@ export default function MainWorkspaceView({ initialArchetype = "A" }) {
       exportedAt: new Date().toISOString(),
       detected_domain: domKey,
       domain: domKey,
-      status: coreResult?.status,
-      ruleId: coreResult?.ruleId,
+      status: coreResult?.status || pythonSolverResult?.status || "NORMAL",
+      ruleId: coreResult?.ruleId || pythonSolverResult?.ruleId || "CORE-PASS",
       score: coreResult?.score,
+      shaped_input_payload: pythonSolverResult?.shaped_input_payload,
       solution: pythonSolverResult || coreResult,
       coreEvaluation: coreResult,
       aiSopReport: aiReport,
@@ -159,8 +183,8 @@ export default function MainWorkspaceView({ initialArchetype = "A" }) {
 
   const handleLoadWorkspaceFiles = async () => {
     try {
-      const res = await fetch("/api/workspace-data");
-      if (res.ok) {
+      let res = await fetch("/api/workspace-data").catch(() => null);
+      if (res && res.ok) {
         const data = await res.json();
         if (data && data.payload) {
           const detectedDom = data.detectedDomain || data.payload.domain || "UNIVERSAL";
@@ -172,6 +196,20 @@ export default function MainWorkspaceView({ initialArchetype = "A" }) {
           setExportStatusMsg(`📂 실제 워크스페이스 데이터(${data.sourceFile || "통합 파이프라인"}, 도메인: ${targetDom}) 자동 로드 및 분석 완료!`);
           return;
         }
+      }
+      // 2차 폴백: live_workspace_solution.json 시도
+      const liveRes = await fetch("/live_workspace_solution.json").catch(() => null);
+      if (liveRes && liveRes.ok) {
+        const liveData = await liveRes.json();
+        const detectedDom = liveData.detected_domain || liveData.domain || "UNIVERSAL";
+        const targetDom = DOMAIN_GOLDEN_SAMPLES[detectedDom] ? detectedDom : "UNIVERSAL";
+        setActiveDomain(targetDom);
+        const payload = liveData.shaped_input_payload || liveData;
+        setRawJsonText(JSON.stringify(payload, null, 2));
+        runPipeline(payload, targetDom, simulateAiError);
+        setPythonSolverResult(liveData.solution || liveData);
+        setExportStatusMsg(`📂 정적 워크스페이스 솔루션(live_workspace_solution.json, 도메인: ${targetDom}) 로드 완료!`);
+        return;
       }
       setActiveDomain("UNIVERSAL");
       setExportStatusMsg("ℹ️ 로컬 CSV/JSON 스캔 모드로 전환되었습니다 (하단 JSON 편집기에 실제 데이터를 붙여넣어 즉시 분석 가능).");

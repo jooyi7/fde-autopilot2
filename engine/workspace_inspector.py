@@ -56,7 +56,7 @@ def scan_tree(root_path: Path):
                 if f not in {'package.json', 'package-lock.json', 'tsconfig.json', 'result.json', 'cofa_probe_report.json', 'pre_opt_diagnosis_report.json', 'optimizer_proposals.json'}:
                     data_files.append(posix_rel)
             elif ext in {'.md', '.txt'}:
-                if f not in SKIP_DOC_NAMES:
+                if f not in SKIP_DOC_NAMES and not f.startswith("fde_"):
                     doc_files.append(posix_rel)
             elif f in {'package.json', 'requirements.txt', 'pyproject.toml', 'config.toml'}:
                 config_files.append(posix_rel)

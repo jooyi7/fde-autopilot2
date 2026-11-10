@@ -54,12 +54,13 @@
   ```
 
 > 💡 **Q. `bootstrap.py` 한 줄만 치면 내부에서 무슨 일이 자동으로 일어나는가?**  
-> 사용자가 개별 스크립트를 일일이 칠 필요 없이, `bootstrap.py`가 아래 **5단계 자동 파이프라인**을 5초 만에 순차 실행합니다:
+> 사용자가 개별 스크립트를 일일이 칠 필요 없이, `bootstrap.py`가 아래 **6단계 자동 파이프라인**을 5초 만에 순차 실행합니다:
 > 1. `engine/workspace_inspector.py`: `README.md` 및 파일 트리를 자동 스캔하여 **`WORKSPACE_PROFILE.md`** 생성.
 > 2. `engine/workspace_profiler.py`: 대용량 데이터의 결측치(`Null`), 센티널(`-999`), 3-Sigma 이상치 통계를 분석하여 **`.fde_data_profile.md`** 생성.
 > 3. `engine/pre_opt_diagnostician.py`: 평가지표(정확도 vs 연산속도)와 병목(알고리즘 vs HW)을 진단하여 **`.autopilot/pre_opt_diagnosis.md`** 생성.
 > 4. `engine/optimizer_menu.py`: 과제 특성에 맞는 최적화 방식(DP, MILP, 지수평활, 휴리스틱 등) 후보 순위표를 계산하여 **`.fde_optimization_proposal.md`** 생성.
 > 5. `engine/auto_solver_pipeline.py`: 데이터 컬럼/키워드를 분석해 **11대 솔버 중 가장 적합한 솔버를 자동 선택하고 최적화 연산을 수행**하여 **`output/result.json`** 생성.
+> 6. **프론트엔드 의존성 및 로컬 Git 자동 기록**: `package.json` 검사 및 초기 커밋(`git add -A && git commit`)을 자동 완료하여 게이트키퍼 경고 0건 상태 유지.
 
 * **🎯 11대 솔버 자동 매칭 및 최적화 라우팅 메커니즘**:
   - **반도체 5대 특화 도메인 감지 시**:
@@ -177,7 +178,7 @@
 2. **[Terminal #3] TDD 하네스 즉시 검증 (코드 한 줄 고칠 때마다 반복 실행, 3초 소요)**:
    ```bash
    node engine/deterministic_harness.mjs
-   # ➔ 6 / 6 ALL PASS 확인!
+   # ➔ 7 / 7 ALL PASS 확인! (5대 케이스 + AI Fallback + Python result.json 교차 일치)
 
    python engine/auto_solver_pipeline.py --workspace .
    # ➔ output/result.json 최종 갱신 확인!
@@ -186,7 +187,7 @@
 * **Terminal #3에서 3차 로컬 Git 커밋**:
   ```bash
   git add -A
-  git commit -m "feat: implement deterministic core rules and pass 6/6 harness"
+  git commit -m "feat: implement deterministic core rules and pass 7/7 harness"
   ```
 
 ---
@@ -214,6 +215,7 @@
    ```
 
 4. **내장 브라우저(`http://0.0.0.0:5173`) 실시간 검증**:
+   - 접속 즉시 실제 워크스페이스 분석 결과(`output/result.json`) 및 도메인이 첫 화면에 자동 마운트되어 표시되는지 확인.
    - 상단 `[Type A | Type B | Type C | Type D]` 아키타입 모드 전환 확인.
    - 3종 골든 샘플 원클릭 버튼 (🟢 NORMAL / 🟡 WARNING / 🔴 VIOLATION) 상태 배지 동작.
    - What-If 슬라이더 조작 시 판정 수치 실시간 변화 확인.
@@ -252,7 +254,7 @@
   # 1. 11대 솔버 전수 검증 (11/11 PASS 확인)
   python engine/blackbox_emulator.py --verify-solvers
 
-  # 2. JS 결정론 코어 하네스 (6/6 PASS 확인)
+  # 2. JS 결정론 코어 하네스 & Python result.json 교차 일치 검증 (7/7 PASS 확인)
   node engine/deterministic_harness.mjs
 
   # 3. 최종 게이트키퍼 7대 관문 검사 (PASS: 7 | WARN: 0 확인)

@@ -159,7 +159,7 @@ def run_gatekeeper(root: Path) -> int:
                 cwd=str(root), capture_output=True, text=True, timeout=15
             )
             if h_res.returncode == 0:
-                ok("deterministic_harness.mjs 6대 시나리오 검증 6/6 통과")
+                ok("deterministic_harness.mjs 7대 시나리오 및 교차 검증 통과")
             else:
                 warn(f"하네스 실행 경고가 있습니다: {h_res.stdout.strip()[:150]}")
         except Exception as e:

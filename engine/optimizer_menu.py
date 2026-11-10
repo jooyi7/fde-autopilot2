@@ -1889,6 +1889,7 @@ def main() -> int:
         pass
     ap = argparse.ArgumentParser()
     ap.add_argument("--workspace", default=".")
+    ap.add_argument("--propose", action="store_true", help="제안서 생성 모드 (기본)")
     ap.add_argument("--choose", default=None, help="실행할 후보 id (쉼표, 와일드카드, ALL)")
     ap.add_argument("--objective", default="max_value", help="max_value|min_cost|min_cost_cover|max_coverage_budget")
     ap.add_argument("--budget", type=float, default=None)
@@ -1921,6 +1922,10 @@ def main() -> int:
     env = environment_report()
     md = render_proposal_md(proposals, decision_questions(views), views, env, diag_report=diag_report)
     (out_dir / "optimizer_proposals.md").write_text(md, encoding="utf-8")
+    try:
+        (root / ".fde_optimization_proposal.md").write_text(md, encoding="utf-8")
+    except Exception:
+        pass
     (out_dir / "optimizer_proposals.json").write_text(json.dumps({"pre_opt_diagnosis": diag_report,
                                                                  "views": {k: {"table": v["table"], "size": v["size"]} for k, v in views.items()},
                                                                  "proposals": proposals, "questions": decision_questions(views), "environment": env},

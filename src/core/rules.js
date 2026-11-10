@@ -249,11 +249,25 @@ export const THRESHOLD_CONFIG = {
   STRICT_GTE: true,
   OVERLAY_DEFAULT_SPEC_NM: 2.0,
   OVERLAY_WARN_RATIO: 0.85,
+  OVERLAY_CHUCK_DELTA_LIMIT_NM: 0.35,
+  CHUCK_MISMATCH_THRESHOLD_NM: 0.35,
+  OVERLAY_OUTLIER_Z: 3.5,
   MATERIAL_MIN_CPK_APPROVE: 1.33,
   MATERIAL_MIN_CPK_CONDITIONAL: 1.0,
   MATERIAL_SPECTRUM_COS_SIM_LIMIT: 0.985,
+  MATERIAL_REJECT_RISK_CUTOFF: 65.0,
+  MATERIAL_WARN_RISK_CUTOFF: 32.0,
+  MATERIAL_CONDITIONAL_APPROVAL_RISK: 32.0,
   MARKET_DIO_SPIKE_DAYS: 7.0,
   MARKET_CAPEX_UNDEREXEC_PCT: 70.0,
+  MARKET_KRW_PER_USD: 1380.0,
+  EXCHANGE_RATE_KRW_USD: 1380.0,
+  VALUE_CHAIN_BULLWHIP_AMP: 1.65,
+  BULLWHIP_AMPLIFIER: 1.65,
+  VALUE_CHAIN_TAX_RATE: 0.22,
+  CORPORATE_TAX_RATE: 0.22,
+  VALUE_CHAIN_HOLDING_LOSS_PER_BGB: 145.0,
+  STRANDED_HOLDING_LOSS_PER_BGB: 145.0,
   VALUE_CHAIN_STRANDED_DIE_VIOLATION_BGB: 5.0,
 };
 
@@ -342,6 +356,20 @@ export function evaluateOverlayDomain(payload, isolatedAnomalies = []) {
   const dyRaw = meas.map((m) => m.dy);
   const hasFF = meas.some((m) => Math.abs(m.pre_process_stress_mpa || 0) > 0);
 
+  // Outlier Z-Score Filtering (Aligned 100% with solver_overlay.py)
+  const outlierZ = toSafeFloat(payload.outlier_z, THRESHOLD_CONFIG.OVERLAY_OUTLIER_Z);
+  const mxRaw = calcMean(dxRaw), sxRaw = Math.max(calcStd(dxRaw), 1e-6);
+  const myRaw = calcMean(dyRaw), syRaw = Math.max(calcStd(dyRaw), 1e-6);
+  let validMask = meas.map((m) => (
+    Math.abs(m.dx - mxRaw) / sxRaw <= outlierZ && Math.abs(m.dy - myRaw) / syRaw <= outlierZ
+  ));
+  if (validMask.filter(Boolean).length < Math.max(6, Math.floor(meas.length / 2))) {
+    validMask = validMask.map(() => true);
+  }
+  const inlierMeas = meas.filter((_, idx) => validMask[idx]);
+  const dxClean = inlierMeas.map((m) => m.dx);
+  const dyClean = inlierMeas.map((m) => m.dy);
+
   const buildRow = (r, order) => {
     const X = r.X || 0, Y = r.Y || 0, x = r.x || 0, y = r.y || 0;
     const r2 = X * X + Y * Y;
@@ -355,13 +383,13 @@ export function evaluateOverlayDomain(payload, isolatedAnomalies = []) {
 
   let best = null;
   for (let order = 1; order <= maxOrder; order++) {
-    const A = meas.map((r) => buildRow(r, order));
+    const A = inlierMeas.map((r) => buildRow(r, order));
     // Overfitting guard: only allow higher order if sample size >= 2 * feature_count
-    if (order > 1 && meas.length < A[0].length + 3) {
+    if (order > 1 && inlierMeas.length < A[0].length + 3) {
       break;
     }
-    const coeffX = ridgeLeastSquares(A, dxRaw, 1e-3);
-    const coeffY = ridgeLeastSquares(A, dyRaw, 1e-3);
+    const coeffX = ridgeLeastSquares(A, dxClean, 1e-3);
+    const coeffY = ridgeLeastSquares(A, dyClean, 1e-3);
 
     const resX = A.map((row, i) => dxRaw[i] - row.reduce((s, v, j) => s + v * coeffX[j], 0));
     const resY = A.map((row, i) => dyRaw[i] - row.reduce((s, v, j) => s + v * coeffY[j], 0));
@@ -379,7 +407,7 @@ export function evaluateOverlayDomain(payload, isolatedAnomalies = []) {
       !reworkFlag &&
       (afterM3sX >= warnLimit || afterM3sY >= warnLimit || payload.mode === "WARNING");
 
-    // Physical 10-Parameter Correctables
+    // Physical 10-Parameter Correctables (Aligned with solver_overlay.py)
     const phys10 = {
       wafer_Tx_nm: Number((coeffX[0] || 0).toFixed(4)),
       wafer_Ty_nm: Number((coeffY[0] || 0).toFixed(4)),
@@ -389,6 +417,8 @@ export function evaluateOverlayDomain(payload, isolatedAnomalies = []) {
       wafer_RotY_urad: Number(((coeffY[1] || 0) * 1000).toFixed(3)),
       field_MagX_ppm: Number(((coeffX[3] || 0) * 1000).toFixed(3)),
       field_MagY_ppm: Number(((coeffY[4] || 0) * 1000).toFixed(3)),
+      field_RotX_urad: Number((-(coeffX[4] || 0) * 1000).toFixed(3)),
+      field_RotY_urad: Number(((coeffY[3] || 0) * 1000).toFixed(3)),
     };
 
     // Smart Metrology Sampling
@@ -426,9 +456,10 @@ export function evaluateOverlayDomain(payload, isolatedAnomalies = []) {
     const chuckDelta = chuckVals.length > 1 ? Math.max(...chuckVals) - Math.min(...chuckVals) : 0;
     const etchDelta = etchVals.length > 1 ? Math.max(...etchVals) - Math.min(...etchVals) : 0;
 
-    const attribution = etchDelta > Math.max(0.35, chuckDelta * 1.3)
+    const chuckMismatchLimit = toSafeFloat(payload.chuck_mismatch_threshold_nm, THRESHOLD_CONFIG.CHUCK_MISMATCH_THRESHOLD_NM);
+    const attribution = etchDelta > Math.max(chuckMismatchLimit, chuckDelta * 1.3)
       ? "PRE_PROCESS_ETCH_DEP_CHAMBER_VARIATION"
-      : chuckDelta > 0.35
+      : chuckDelta > chuckMismatchLimit
       ? "SCANNER_CHUCK_TO_CHUCK_MISMATCH"
       : "WITHIN_NORMAL_MATCHING_TOLERANCE";
 
@@ -656,12 +687,13 @@ export function evaluateMaterialDomain(payload, isolatedAnomalies = []) {
     let ruleId = "MAT-RULE-APPROVE";
     let orderSharePct = 85;
 
+    const matConditionalLimit = toSafeFloat(payload.conditional_approval_risk_limit, THRESHOLD_CONFIG.MATERIAL_CONDITIONAL_APPROVAL_RISK);
     if (hasHardReject || unapproved4M || compositeRisk >= 65) {
       decision = "REJECT";
       badge = "VIOLATION";
       ruleId = "MAT-RULE-REJECT-4M-OR-OOS";
       orderSharePct = 0;
-    } else if (fpExcursion || hvmFlag || compositeRisk >= 30) {
+    } else if (fpExcursion || hvmFlag || compositeRisk >= matConditionalLimit) {
       decision = "CONDITIONAL_PILOT_RUN";
       badge = "WARNING";
       ruleId = "MAT-RULE-CONDITIONAL-PILOT";
@@ -770,7 +802,8 @@ export function evaluateMarketDomain(payload, isolatedAnomalies = []) {
       if (period.includes(fq)) calQuarter = period.replace(fq, cq);
     }
     const curr = String(rec.currency || "USD_BILLION").toUpperCase();
-    const scale = curr.includes("KRW") ? 1000000 / 1380.0 : curr.includes("BILLION") ? 1000.0 : 1.0;
+    const fxRate = toSafeFloat(payload.exchange_rate_krw_usd, THRESHOLD_CONFIG.EXCHANGE_RATE_KRW_USD);
+    const scale = curr.includes("KRW") ? 1000000 / fxRate : curr.includes("BILLION") ? 1000.0 : 1.0;
     const revMusd = toSafeFloat(resolveField(rec, "revenue", 0), 0) * scale;
     const opMusd = toSafeFloat(resolveField(rec, "operating_profit", 0), 0) * scale;
     const nrvMusd = toSafeFloat(rec.nrv_reversal, 0) * scale;
@@ -791,7 +824,9 @@ export function evaluateMarketDomain(payload, isolatedAnomalies = []) {
       underlying_op_musd: Number(underlyingOpMusd.toFixed(1)),
       operating_margin_pct: Number(opmPct.toFixed(2)),
       underlying_opm_pct: Number(underlyingOpmPct.toFixed(2)),
+      underlying_operating_margin_pct: Number(underlyingOpmPct.toFixed(2)),
       nrv_distortion_pct_pt: Number((opmPct - underlyingOpmPct).toFixed(2)),
+      nrv_opm_distortion_pct_pt: Number((opmPct - underlyingOpmPct).toFixed(2)),
       shipment_bgb: Number(shipBgb.toFixed(2)),
       blended_asp_usd: Number((revMusd / Math.max(shipBgb, 1e-6)).toFixed(3)),
       guidance_gap_pct_pt: Number(((rec.actual_bit_growth_pct || 0) - (rec.guided_bit_growth_pct || 0)).toFixed(2)),
@@ -942,7 +977,9 @@ export function evaluateMarketDomain(payload, isolatedAnomalies = []) {
  * ============================================================================ */
 export function evaluateValueChainDomain(payload, isolatedAnomalies = []) {
   const shock = toSafeFloat(payload.end_demand_shock_pct, 5.0);
-  const amp = 1.65;
+  const amp = toSafeFloat(payload.bullwhip_amplifier, THRESHOLD_CONFIG.BULLWHIP_AMPLIFIER);
+  const corporateTaxRate = toSafeFloat(payload.corporate_tax_rate, THRESHOLD_CONFIG.CORPORATE_TAX_RATE);
+  const holdingLossPerBgb = toSafeFloat(payload.stranded_holding_loss_per_bgb, THRESHOLD_CONFIG.STRANDED_HOLDING_LOSS_PER_BGB);
   const stages = [
     { stage_order: 1, node: "CSP_AI_SERVER_DEMAND", lead_time_months: 1, shock_pct: Number(shock.toFixed(2)) },
     { stage_order: 2, node: "FABLESS_GPU_ALLOCATION", lead_time_months: 3, shock_pct: Number((shock * amp).toFixed(2)) },
@@ -986,10 +1023,10 @@ export function evaluateValueChainDomain(payload, isolatedAnomalies = []) {
     const ltaFloorK = toSafeFloat(p.lta_floor_k ?? p.lta_committed_min_k_wspm, 20.0);
     const maxDemK = toSafeFloat(p.max_demand_k ?? p.max_demand_k_wspm, Math.max(ltaFloorK * 2, 75));
     const opPerK = toSafeFloat(p.op_per_k_musd ?? p.expected_annual_op_per_k_wspm_musd, capexK * 0.36);
-    const netOutRatio = Math.max(0.1, 1 - convLoss / 100.0);
+    const netOutRatio = Math.max(0.5, 1.0 - (convLoss / 100.0) * 0.25);
     const roicPct = p.roic_pct !== undefined
       ? toSafeFloat(p.roic_pct, 30.0)
-      : Number((((opPerK * netOutRatio * (1 - 0.22)) / capexK) * 100).toFixed(2));
+      : Number((((opPerK * netOutRatio * (1 - corporateTaxRate)) / capexK) * 100).toFixed(2));
     return {
       product: pName,
       capex_k: capexK,
@@ -1053,7 +1090,7 @@ export function evaluateValueChainDomain(payload, isolatedAnomalies = []) {
       effective_shippable_ceiling_bgb: Number(shippableBgb.toFixed(2)),
       binding_bottleneck_node: bindingNode,
       stranded_unshipped_die_inventory_bgb: Number(strandedBgb.toFixed(2)),
-      stranded_holding_loss_musd: Number((strandedBgb * 145).toFixed(1)),
+      stranded_holding_loss_musd: Number((strandedBgb * holdingLossPerBgb).toFixed(1)),
     },
     capex_roic_optimization: {
       total_capex_budget_musd: budgetMusd,
@@ -1524,8 +1561,9 @@ export function evaluateUniversalDomain(payload, isolatedAnomalies = []) {
     };
   });
 
+  const hasRagOutOfScope = Array.isArray(payload.documents) && payload.documents.length > 0 && Boolean(payload.query) && citations.length === 0;
   const isViol = specViolations.length > 0 || unmetMandatory.length > 0;
-  const isWarn = !isViol && (localAnomalies.length > 0 || deferredItems.length > 0 || rejectedRestricted.length > 0);
+  const isWarn = !isViol && (localAnomalies.length > 0 || deferredItems.length > 0 || rejectedRestricted.length > 0 || hasRagOutOfScope);
   const status = isViol ? "VIOLATION" : isWarn ? "WARNING" : "NORMAL";
   const ruleId = isViol
     ? "UNIV-RULE-SPEC-OR-MANDATORY-VIOLATION"
@@ -1534,7 +1572,7 @@ export function evaluateUniversalDomain(payload, isolatedAnomalies = []) {
     : "UNIV-RULE-OPTIMAL-PASS";
 
   return {
-    domain: "UNIVERSAL",
+    domain: payload.domain || "UNIVERSAL",
     status,
     ruleId,
     score: isViol ? 28 : isWarn ? 76 : 97,
@@ -1595,7 +1633,15 @@ export function evaluateCoreRules(rawInput) {
   if (domain === "MARKET") return evaluateMarketDomain(cleanPayload, isolatedAnomalies);
   if (domain === "VALUE_CHAIN") return evaluateValueChainDomain(cleanPayload, isolatedAnomalies);
   if (domain === "EDUCATOR") return evaluateEducatorDomain(cleanPayload, isolatedAnomalies);
-  if (domain === "UNIVERSAL") return evaluateUniversalDomain(cleanPayload, isolatedAnomalies);
+  if (
+    domain === "UNIVERSAL" ||
+    domain.startsWith("TYPE_") ||
+    Array.isArray(cleanPayload.records) ||
+    Array.isArray(cleanPayload.rows) ||
+    Array.isArray(cleanPayload.data)
+  ) {
+    return evaluateUniversalDomain(cleanPayload, isolatedAnomalies);
+  }
 
   // Generic Fallback for arbitrary test inputs
   const val = toSafeFloat(cleanPayload.value, 50);

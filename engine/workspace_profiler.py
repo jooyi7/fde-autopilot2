@@ -211,8 +211,7 @@ def analyze_csv(file_path: Path, dm_triggers: List[str], token_accumulator: List
         lines.extend(col_summary)
     except Exception as e:
         lines.append(f"- ⚠️ CSV 파싱 오류: {e}")
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 def analyze_json(file_path: Path, dm_triggers: List[str], token_accumulator: List[str]) -> str:
@@ -241,8 +240,7 @@ def analyze_json(file_path: Path, dm_triggers: List[str], token_accumulator: Lis
                     lines.append(f"  - `{k}`: {repr(v)[:80]}")
     except Exception as e:
         lines.append(f"- ⚠️ JSON 분석 생략/오류: {e}")
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 def analyze_sqlite(file_path: Path, dm_triggers: List[str], token_accumulator: List[str]) -> str:
@@ -264,8 +262,7 @@ def analyze_sqlite(file_path: Path, dm_triggers: List[str], token_accumulator: L
         conn.close()
     except Exception as e:
         lines.append(f"- ⚠️ DB 스캔 오류: {e}")
-    return "
-".join(lines)
+    return "\n".join(lines)
 
 
 def scan_workspace(root_dir: Path) -> str:
@@ -299,7 +296,7 @@ def scan_workspace(root_dir: Path) -> str:
             tree_lines.append(f"{indent}📁 `{rel_dir.name}/`")
 
         for fname in sorted(filenames):
-            if fname.startswith(".fde_"):
+            if fname.startswith(".fde_") or fname.startswith("fde_"):
                 continue
             fpath = Path(dirpath) / fname
             fsize_kb = round(fpath.stat().st_size / 1024, 1)
@@ -353,21 +350,16 @@ def scan_workspace(root_dir: Path) -> str:
         report.append("- 🏗️ **추천 UI/앱 아키타입**: **Archetype D (상태 머신 및 승인/백오피스 워크플로우)**")
 
     if readme_excerpt:
-        report.append("
-## 3. 과제 README.md 핵심 발췌")
-        report.append("```markdown
-" + readme_excerpt[0] + "
-```")
+        report.append("\n## 3. 과제 README.md 핵심 발췌")
+        report.append("```markdown\n" + readme_excerpt[0] + "\n```")
 
-    report.append("
-## 4. 데이터셋 스키마·결측치·임계치(3-Sigma) 자동 분석")
+    report.append("\n## 4. 데이터셋 스키마·결측치·임계치(3-Sigma) 자동 분석")
     if data_reports:
         report.extend(data_reports)
     else:
         report.append("- 별도의 로컬 CSV/JSON/DB 데이터 파일이 감지되지 않았습니다.")
 
-    report.append("
-## 5. 💬 실무자 에이전트(DM) 최우선 확인 트리거 (도메인 & 데이터 기반 자동 도출)")
+    report.append("\n## 5. 💬 실무자 에이전트(DM) 최우선 확인 트리거 (도메인 & 데이터 기반 자동 도출)")
     if dm_triggers:
         for idx, trig in enumerate(dm_triggers, 1):
             report.append(f"{idx}. {trig}")
@@ -375,14 +367,12 @@ def scan_workspace(root_dir: Path) -> str:
         report.append("1. [경계값 등호 기준] 임계값 판정 시 이상(>=)인지 초과(>)인지 확인")
         report.append("2. [핵심 산출물 우선순위] 1순위로 검증해야 할 핵심 유즈케이스와 제외 가능한 범위(Out-of-Scope) 확인")
 
-    report.append("
-## 6. FDE 80/20 아키텍처 설계 권고 (Codex 컨텍스트 주입용)")
+    report.append("\n## 6. FDE 80/20 아키텍처 설계 권고 (Codex 컨텍스트 주입용)")
     report.append("- 위 데이터 스캔 결과에서 발견된 **결측치(Null/빈 문자열/센티널 수치 -999)** 처리 로직을 `/src/data` 파서에 반드시 포함할 것.")
     report.append("- 감지된 도메인 솔버(`engine/solver_*.py`)의 수리/통계 알고리즘을 `/src/core/rules.js` 결정론 코어에 100% 이식할 것.")
     report.append("- 정상(NORMAL), 경고(WARNING), 위반(VIOLATION) 3종 데이터를 `/src/data/samples.js`의 골든 샘플 프리셋으로 구성할 것.")
 
-    return "
-".join(report)
+    return "\n".join(report)
 
 
 if __name__ == "__main__":

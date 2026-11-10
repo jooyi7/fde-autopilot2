@@ -2,8 +2,8 @@
   "detected_domain": "UNIVERSAL",
   "domain": "UNIVERSAL",
   "source": "workspace_multi_table_semantic_router",
-  "status": "WARNING",
-  "ruleId": "UNIV-RULE-ANOMALY-OR-CAP-WARN",
+  "status": "NORMAL",
+  "ruleId": "UNIV-RULE-OPTIMAL-PASS",
   "optimization_method": "default",
   "optimality": "HEURISTIC",
   "shaped_input_payload": {
@@ -19,8 +19,8 @@
   },
   "solution": {
     "domain": "UNIVERSAL_OPS",
-    "status": "WARNING",
-    "ruleId": "UNIV-RULE-ANOMALY-OR-CAP-WARN",
+    "status": "NORMAL",
+    "ruleId": "UNIV-RULE-OPTIMAL-PASS",
     "tabular_eda_and_root_cause": {
       "valid_row_count": 0,
       "isolated_anomaly_count": 0,

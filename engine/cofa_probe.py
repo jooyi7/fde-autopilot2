@@ -363,7 +363,7 @@ def extract_doc_rules_and_citations(root: Path) -> Dict[str, Any]:
         for fname in sorted(filenames):
             if not fname.lower().endswith((".md", ".txt")):
                 continue
-            if fname in {"AGENTS.md", "AUDITOR_GUIDE.md", "fde_autopilot_manual.md", "WORKSPACE_PROFILE.md", "SPEC.md", "HANDOFF.md", "SOLUTION_NOTES.md"}:
+            if fname in {"AGENTS.md", "AUDITOR_GUIDE.md", "fde_autopilot_manual.md", "WORKSPACE_PROFILE.md", "SPEC.md", "HANDOFF.md", "SOLUTION_NOTES.md"} or fname.startswith("fde_"):
                 continue
             fpath = Path(dirpath) / fname
             try:
@@ -506,7 +506,7 @@ def discover_and_join_relational_tables(root: Path) -> Dict[str, Any]:
                         tables[rel] = data[:1500]
                 except Exception:
                     pass
-            elif lower.endswith(".md") and fname not in {"AGENTS.md", "AUDITOR_GUIDE.md", "fde_autopilot_manual.md", "WORKSPACE_PROFILE.md", "SPEC.md", "HANDOFF.md", "SOLUTION_NOTES.md"}:
+            elif lower.endswith(".md") and fname not in {"AGENTS.md", "AUDITOR_GUIDE.md", "fde_autopilot_manual.md", "WORKSPACE_PROFILE.md", "SPEC.md", "HANDOFF.md", "SOLUTION_NOTES.md"} and not fname.startswith("fde_"):
                 try:
                     md_tables = extract_markdown_tables(read_text_auto_encoding(fpath), rel)
                     for t_id, t_rows in md_tables:

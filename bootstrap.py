@@ -105,10 +105,12 @@ def bootstrap(workspace_dir: str = "."):
     profiler_py = repo_dir / "engine" / "workspace_profiler.py"
     if profiler_py.exists():
         out_profile = workspace_root / ".fde_data_profile.md"
-        ok, _, _ = run_command([py_bin, str(profiler_py), "--root", str(workspace_root), "--out", str(out_profile)])
+        ok, _, err = run_command([py_bin, str(profiler_py), "--root", str(workspace_root), "--out", str(out_profile)])
         if out_profile.exists():
             shutil.copy2(out_profile, autopilot_dir / "workspace_profile.md")
             print("  ✅ [2/5] 데이터 결측치/이상치 프로파일링 완료 -> .fde_data_profile.md")
+        else:
+            print(f"  ⚠️ [2/5] 데이터 프로파일링 생성 스킵/경고: {err.strip()[:100]}")
 
     # 4-3. pre_opt_diagnostician.py (정확도 vs 속도 & 알고리즘 vs HW 병목 사전 진단)
     diag_py = repo_dir / "engine" / "pre_opt_diagnostician.py"
@@ -141,6 +143,24 @@ def bootstrap(workspace_dir: str = "."):
         if not dst_doc.exists() and src_tmpl.exists():
             shutil.copy2(src_tmpl, dst_doc)
             print(f"  ✅ {doc_name} 템플릿 준비 완료")
+
+    # 6. 의존성 확인 및 초기 Git Commit 자동 기록 (AGENTS.md 헌법 준수)
+    pkg_json = workspace_root / "package.json"
+    node_mods = workspace_root / "node_modules"
+    if pkg_json.exists() and not node_mods.exists():
+        print("\n[6/6] Checking frontend dependencies (node_modules)...")
+        ok_npm, _, _ = run_command(["npm", "install", "--silent"], cwd=str(workspace_root))
+        if ok_npm:
+            print("  ✅ npm install 완료 (0.0.0.0 Vite 웹 서버 구동 준비 완료)")
+        else:
+            print("  ℹ️ npm install 생략 (오프라인 환경일 경우 시험 가이드 확인)")
+
+    # 로컬 git repo인 경우 초기 커밋 기록 (push는 차단된 상태)
+    if (workspace_root / ".git").exists():
+        run_command(["git", "add", "-A"], cwd=str(workspace_root))
+        ok_commit, _, _ = run_command(["git", "commit", "-m", "chore: initial bootstrap workspace profile and solver artifacts"], cwd=str(workspace_root))
+        if ok_commit:
+            print("  ✅ 로컬 Git 초기 커밋 기록 완료 (git push 원천 차단 상태 유지)")
 
     print("\n" + "=" * 64)
     print("🎯 [완료] 워크스페이스 및 데이터 분석이 성공적으로 완료되었습니다!")

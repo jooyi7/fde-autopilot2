@@ -700,7 +700,7 @@ class UniversalProblemSolver:
             eda_res.get("isolated_anomaly_count", 0) > 0
             or opt_res.get("deferred_count", 0) > 0
             or opt_res.get("rejected_restricted_count", 0) > 0
-            or (bool(query) and rag_res.get("out_of_scope", False))
+            or (len(docs) > 0 and bool(query) and rag_res.get("out_of_scope", False))
         )
 
         status = "VIOLATION" if has_spec_viol else ("WARNING" if has_warn else "NORMAL")

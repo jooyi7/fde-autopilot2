@@ -2,7 +2,7 @@
 set -e
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-WORKSPACE_ROOT="${1:-$(cd "$REPO_DIR/.." && pwd)}"
+WORKSPACE_ROOT="${1:-$REPO_DIR}"
 if [ "$1" = "--workspace" ] && [ -n "$2" ]; then
     WORKSPACE_ROOT="$(cd "$2" && pwd)"
 fi
@@ -79,6 +79,18 @@ if [ ! -f "$WORKSPACE_ROOT/SOLUTION_NOTES.md" ] && [ -f "$REPO_DIR/docs_kit/ARCH
 fi
 if [ ! -f "$WORKSPACE_ROOT/HANDOFF.md" ] && [ -f "$REPO_DIR/docs_kit/HANDOFF_TEMPLATE.md" ]; then
     cp "$REPO_DIR/docs_kit/HANDOFF_TEMPLATE.md" "$WORKSPACE_ROOT/HANDOFF.md"
+fi
+
+# 6. 의존성 설치 및 로컬 Git Commit 기록 (AGENTS.md 헌법 준수)
+if [ -f "$WORKSPACE_ROOT/package.json" ] && [ ! -d "$WORKSPACE_ROOT/node_modules" ]; then
+    echo "📦 [NPM] Installing frontend dependencies..."
+    npm --prefix "$WORKSPACE_ROOT" install --silent 2>/dev/null || echo "⚠️ npm install 건너뜀 (오프라인 환경일 경우 사전문서 확인)"
+fi
+
+if git -C "$WORKSPACE_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "$WORKSPACE_ROOT" add -A 2>/dev/null || true
+    git -C "$WORKSPACE_ROOT" commit -m "chore: initial bootstrap workspace profile and solver artifacts" 2>/dev/null || true
+    echo "  -> Recorded initial local git commit (push disabled)."
 fi
 
 echo "===================================================="
