@@ -1,9 +1,16 @@
-# 🎯 FDE Autopilot 타임라인별 실전 프롬프트 뱅크 (v3.0 - 5대 반도체 도메인 완비 버전)
+# 🎯 FDE Autopilot 6시간(360분) 실전 마스터 프롬프트 뱅크 (v6.1 - 11대 솔버 & 3-터미널 체계 완비)
 
 > **📌 3-터미널 분리 세팅 (시험 시작 직후 실행)**
 > - **터미널 1 (메인 에이전트)**: `codex` 실행 후 `/status` 및 `/model`에서 허용 모델(`Sol 6.1`, `Terra 5.6`, `Luna 6`, `Sol 6.0`) 선택 (**`Astra` 절대 선택 금지!**)
 > - **터미널 2 (실시간 서버)**: 통합 앱 구현 후 `npm run dev` (`0.0.0.0` 바인딩) 상시 구동용
-> - **터미널 3 (서브 에이전트 & Git)**: `bash bootstrap.sh --workspace .` 및 `python3 engine/blackbox_emulator.py --verify-solvers` 실행 -> `.fde_data_profile.md` 자동 생성 확인 및 매 단계 검증/로컬 `git commit` 수행 (**`git push` 절대 금지!**)
+> - **터미널 3 (서브 에이전트 & Git)**: `python bootstrap.py --workspace .` 실행 -> `.fde_data_profile.md`, `.autopilot/pre_opt_diagnosis.md` 자동 생성 확인 및 매 단계 TDD 하네스 검증(`node engine/deterministic_harness.mjs`)/로컬 `git commit` 수행 (**`git push` 절대 금지!**)
+>
+> **💡 6시간(360분) 대회 타임라인 운영 전략**:
+> - **[Phase 1: 00:00 ~ 01:00]** `bootstrap.py` 원클릭 딥 스캔 ➔ 실무자 DM 1·2차 심층 질의 ➔ 5대 대안 비교 및 `SPEC.md` 확정
+> - **[Phase 2: 01:00 ~ 03:00] 🔥 [최대 투자] 결정론 코어 룰(`src/core/rules.js` & 11대 솔버 `engine/solver_*.py`) 정밀 구현 및 TDD 하네스(3초) 반복 검증**
+> - **[Phase 3: 03:00 ~ 04:00]** `scaffold_app.py` 앱 생성 ➔ `npm run dev` (0.0.0.0) ➔ 3종 골든 샘플, What-If 슬라이더, 채점용 `output/result.json` Export 검증
+> - **[Phase 4: 04:00 ~ 05:30]** 평가위원용 3대 문서 완성 (`SPEC.md`, `SOLUTION_NOTES.md` 5대 대안 비교표, `HANDOFF.md`)
+> - **[Phase 5: 05:30 ~ 06:00]** `final_gatekeeper.py` 7대 관문 무결성 감사 통과, 전 파일 저장 및 후속 서술형 핵심 암기 제출
 
 ---
 
@@ -46,7 +53,7 @@
 - 현업 최대 문제점, 기존 해결 방식의 한계, 최다 민원 해결 목표
 - 실무자 DM 확인 불변 규칙 (결측/센티널 -999 전처리 기준, 중복 제거 기준, 임계치 등호 >= vs > 기준, README와 상충 시 DM 기준 우선 적용 근거)
 - 5대 반도체 도메인 중 이번 과제에 매핑된 레퍼런스 솔버(engine/solver_overlay.py, solver_material.py, solver_market.py, solver_value_chain_biz.py, solver_curriculum.py 중 해당 모듈)의 핵심 수리 로직 이식 계획
-- 무엇부터 어떤 순서로 구현할지 실행 계획(In-Scope 핵심 기능 및 예정 [구현 좌표: 파일명 - 함수명()] vs Out-of-Scope)과 7단계 진행 상태 트래커
+- 무엇부터 어떤 순서로 구현할지 9단계 순차 구현 로드맵(Step 1~2: 파서/골든샘플 ➔ Step 3~4: 코어 수치/임계치 판정 ➔ Step 5: 솔버/결과JSON ➔ Step 6: AI Fallback ➔ Step 7~8: 대시보드 UI/What-If ➔ Step 9: 게이트키퍼)과 예정 [구현 좌표: 파일명 - 함수명()] vs Out-of-Scope 범위 명시.
 ```
 *(💡 Step 1 완료 후 **터미널 3**에서 `git add -A && git commit -m "docs: evaluate 5 alternatives, accountability rules, and complete SPEC.md"` 실행!)*
 
@@ -63,10 +70,12 @@
   * 포토 Overlay 과제일 경우: 비선형 고차(1~3차) + 전공정 스트레스 Feed-forward APC, Edge 스마트 샘플링, Chuck/챔버 매칭 라우팅 포함
   * 소재품질 CoA 과제일 경우: Lot 간 Cpk 산포, 스펙트럼 파형 지문(Fingerprint) 유사도, 배관 체류 HVM 스트레스, Sub-tier 4M 변경 감사 포함
   * 시장전략 실적 과제일 경우: 마이크론 8월 결산 Calendarization 정규화, P×Q×Mix 분해(Mix 착시 탐지), IR 발언 vs 재고일수(DIO) 교차검증 포함
-  * 경영전략 밸류체인 과제일 경우: TSMC CoWoS 패키징 상한선(Ceiling) 및 16개월 리드타임 채찍효과, Die Penalty 반영 CAPEX ROIC 최적화, 지정학 시나리오 트리 포함
-  * 반도체 산업교육 과제일 경우: Kahn 위상정렬 선수과목 DAG 검증, [비유 + 공학적 한계 교정] 2-Layer 설명, 4단계 비즈니스 임팩트 브릿지 및 직무별 소크라틱 퀴즈 포함
+  * 경영전략 밸류체인 과제일 경우: TSMC CoWoS 패키징 상한선(Ceiling) 및 16개월 리드타임 채찍효과, 전환투자 손실(Conversion Loss) 및 LTA 반영 CAPEX ROIC 최적화, 지정학 시나리오 트리 포함
+  * 반도체 산업교육 과제일 경우: Kahn 위상정렬 선수과목 DAG 검증, 12종 공정/소자 [비유 + 공학적 한계 교정] 2-Layer 설명, 목표 과목 압축 보존 및 오개념 진단 포함
+  * **5대 문제 유형 과제일 경우**: Type A(알람 규정 위반 최소화), Type B(웨이퍼 불량 공간 분석 & 예산 배낭 최적화), Type C(센서 FDC 시계열 이상치 & CUSUM 비용 최적화), Type D(설비 Weibull 잔존수명 RUL & PM 스케줄링), Type E(레시피 파라미터 Golden Spec Diff & Cpk 마진 최대화)
+  * **위 5대 도메인 외 미출제/범용 현업 과제일 경우 (`solver_universal.py` / `UNIVERSAL` 모드)**: ① 다변량 수치 이상치(3-Sigma/USL) 및 타겟 지표와의 피어슨 상관관계 Root-Cause Top Driver 도출, ② 예산/용량/필수과업/보안금지구역 제약 최적화 스케줄러, ③ BM25 기반 규정·SOP 문서 근거 조항(Citation ID) 검색기를 결합하여 완벽히 해결할 것.
 - src/ai/reporter.js: 코어의 판정 결과를 받아 자연어 요약·권장 조치 가이드(SOP)를 생성하는 함수(generateInsightWithFallback - 에러나 타임아웃 시 0.1초 내로 코어 수치 기반 표준 안전장치 리포트를 반환하는 Fallback 필수 포함)
-- src/components/Dashboard.jsx (메인 통합 UI): 화면 최상단에 평가자가 클릭 한 번으로 검증할 수 있는 3종 골든 샘플 버튼([정상 샘플 입력], [경고(임계치) 샘플 입력], [위반/오류 샘플 입력]), 핵심 KPI 요약 카드, 이상치/결측치 분리 필터, 판정 근거(적용 규칙 ID 및 책임 구분 배지) 및 AI 리포트 뷰어를 구현해 줘. 서버 설정은 반드시 host 0.0.0.0 바인딩을 유지해 줘.
+- src/components/Dashboard.jsx (메인 통합 UI): 화면 최상단에 평가자가 클릭 한 번으로 검증할 수 있는 3종 골든 샘플 버튼([정상 샘플 입력], [경고(임계치) 샘플 입력], [위반/오류 샘플 입력]), 실제 과제 파일 자동 로드 버튼, What-If 시뮬레이션 슬라이더, 채점용 결과 파일(output/result.json) 원클릭 Export 버튼, 핵심 KPI 요약 카드, 판정 근거(적용 규칙 ID 및 책임 구분 배지) 및 AI 리포트 뷰어를 구현해 줘. 서버 설정은 반드시 host 0.0.0.0 바인딩을 유지해 줘.
 ```
 
 ---
