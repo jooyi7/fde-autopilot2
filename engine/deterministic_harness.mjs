@@ -18,13 +18,15 @@ const candidateCorePaths = [
   "src/core/rules.js",
   "src/core/engine.js",
   "src/core/analyzer.js",
-  "src/core/index.js"
+  "src/core/index.js",
+  "engine/js_templates/rules.js"
 ];
 
 const candidateSamplePaths = [
   "src/data/samples.js",
   "src/data/goldenSamples.js",
-  "src/data/presets.js"
+  "src/data/presets.js",
+  "engine/js_templates/samples.js"
 ];
 
 let loadedCore = null;

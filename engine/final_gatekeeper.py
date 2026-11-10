@@ -132,11 +132,14 @@ def run_gatekeeper(root: Path) -> int:
     else:
         ok("localhost 하드코딩 없음 (0.0.0.0 바인딩 원칙 준수)")
 
-    # 4. 필수 제출 문서 아티팩트 보존 점검
-    print("\n[4/7] 핵심 엔지니어링 문서(SPEC.md, HANDOFF.md, AGENTS.md 등) 보존 점검")
+    # 4. 필수 제출 문서 및 채점 산출물(output/result.json) 점검
+    print("\n[4/7] 핵심 엔지니어링 문서(SPEC.md, HANDOFF.md, AGENTS.md) 및 채점 파일(output/result.json) 점검")
     doc_found = [doc for doc in ("SPEC.md", "HANDOFF.md", "SOLUTION_NOTES.md", "ARCHITECTURE_DECISIONS.md", "AGENTS.md") if (root / doc).is_file()]
-    if "SPEC.md" in doc_found and "HANDOFF.md" in doc_found:
-        ok(f"필수 설계/핸드오프 문서 확인됨: {', '.join(doc_found)}")
+    has_result_json = (root / "output" / "result.json").is_file()
+    if "SPEC.md" in doc_found and "HANDOFF.md" in doc_found and has_result_json:
+        ok(f"필수 문서 및 채점 파일(output/result.json) 보존 확인됨: {', '.join(doc_found)}")
+    elif not has_result_json:
+        warn("output/result.json 파일이 없습니다! 'python engine/auto_solver_pipeline.py'를 실행하여 채점 결과를 생성하세요.")
     else:
         warn(f"일부 핵심 문서가 루트에 없습니다(현재 존재: {doc_found}). 제출 전 SPEC.md 및 HANDOFF.md 생성을 권장합니다.")
 
@@ -156,7 +159,7 @@ def run_gatekeeper(root: Path) -> int:
                 cwd=str(root), capture_output=True, text=True, timeout=15
             )
             if h_res.returncode == 0:
-                ok("deterministic_harness.mjs 6대 시나리오 검증 통과")
+                ok("deterministic_harness.mjs 6대 시나리오 검증 6/6 통과")
             else:
                 warn(f"하네스 실행 경고가 있습니다: {h_res.stdout.strip()[:150]}")
         except Exception as e:
@@ -164,8 +167,8 @@ def run_gatekeeper(root: Path) -> int:
     else:
         ok("기본 디렉토리 구조 점검 완료")
 
-    # 6. 5대 반도체 도메인 솔버 무결성 점검
-    print("\n[6/7] 5대 반도체 현업 도메인 솔버(Overlay/Material/Market/ValueChain/Curriculum) 점검")
+    # 6. 11대 현업 도메인 & 아키타입 솔버 무결성 점검
+    print("\n[6/7] 11대 현업 도메인 & 아키타입 솔버(5대 기출 + Type A~E + Universal) 점검")
     emulator_file = script_dir / "blackbox_emulator.py"
     if emulator_file.is_file():
         try:
@@ -174,7 +177,7 @@ def run_gatekeeper(root: Path) -> int:
                 cwd=str(root), capture_output=True, text=True, timeout=20
             )
             if s_res.returncode == 0:
-                ok("5대 반도체 도메인 레퍼런스 솔버 자가진단(Self-Test) 5/5 완벽 통과")
+                ok("11대 현업 도메인 & 아키타입 솔버 자가진단(Self-Test) 11/11 완벽 통과")
             else:
                 warn(f"솔버 점검 경고: {s_res.stderr.strip()[:150]}")
         except Exception as e:

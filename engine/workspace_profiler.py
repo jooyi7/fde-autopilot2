@@ -11,7 +11,10 @@ import csv
 import json
 import math
 import os
-import sqlite3
+try:
+    import sqlite3
+except ImportError:
+    sqlite3 = None
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -53,9 +56,9 @@ DOMAIN_SIGNATURES = {
         ],
     },
     "DOMAIN_4_VALUE_CHAIN_BIZ": {
-        "name": "경영전략팀 시장분석 ",
+        "name": "경영전략팀 시장분석 (밸류체인 전략)",
         "solver": "engine/solver_value_chain_biz.py (ValueChainBusinessSolver)",
-        "keywords": {"skhynix-value-chain-business-persona", "cowos", "bullwhip", "roic", "wacc", "capital_intensity", "geopolitical", "경영전략", "밸류체인", "가치사슬"},
+        "keywords": {"value-chain-business-persona", "cowos", "bullwhip", "roic", "wacc", "capital_intensity", "geopolitical", "경영전략", "밸류체인", "가치사슬"},
         "dm_questions": [
             "[생태계 병목 & 채찍효과] 내부 Fab/EDS 수율보다 외부 TSMC CoWoS 패키징 할당량이나 커스텀 베이스 다이 공급량이 낮을 때, 출하 상한선(Ceiling)과 미출하 재고 비용을 어떻게 반영할까요?",
             "[CAPEX ROIC & 지정학 시나리오] HBM3E/DDR5/eSSD 포트폴리오 배분 시 최소 WACC 허들 레이트(%)와, 대중국 장비 규제 시 우시/이천 Fab 물량 스왑 컨틴전시 발동 조건은 무엇인가요?",
@@ -64,10 +67,19 @@ DOMAIN_SIGNATURES = {
     "DOMAIN_5_CURRICULUM_EDU": {
         "name": "반도체 산업교육",
         "solver": "engine/solver_curriculum.py (CurriculumOntologySolver)",
-        "keywords": {"skhynix-value-chain-educator-persona", "curriculum", "prereqs", "learner", "pedagogy", "analogy", "산업교육", "커리큘럼", "교육생", "선수과목"},
+        "keywords": {"value-chain-educator-persona", "curriculum", "prereqs", "learner", "pedagogy", "analogy", "산업교육", "커리큘럼", "교육생", "선수과목"},
         "dm_questions": [
             "[선수과목 DAG & 시간 상한] 선수과목 순환 참조(Cycle) 발견 시 전체 에러 처리할지 여부와, 최대 학습 시간(max_hours) 초과 시 레벨/이수율 중 어느 기준으로 과목을 이연(Defer)할까요?",
             "[2-Layer 비유 교정 & 직무별 퀴즈] 교육생 직무(구매/재무/엔지니어)별로 비유 한계 교정(Engineering Fact Guardrail)과 4단계 비즈니스 가치 연결 스토리라인을 필수 출력 항목으로 고정할까요?",
+        ],
+    },
+    "DOMAIN_6_UNIVERSAL_OPS": {
+        "name": "범용 현업 난제 (수율/설비PdM/물류/식단/통근버스/카메라/규정RAG 통합)",
+        "solver": "engine/solver_universal.py (UniversalProblemSolver)",
+        "keywords": {"yield", "defect", "pdm", "oht", "schedule", "budget", "camera", "bus", "menu", "policy", "수율", "결함", "예산", "배차", "식단", "카메라", "보안구역"},
+        "dm_questions": [
+            "[다목적 제약조건 우선순위] 예산(Budget)/용량(Capacity) 상한과 필수 과업(Mandatory) 또는 보안 제외 구역(Forbidden)이 충돌할 때 어느 제약을 절대 기준(Hard Constraint)으로 우선 적용할까요?",
+            "[Root-Cause & 규정 근거 인용] 수치 데이터의 이상치(3-Sigma/USL) 판정과 함께 매뉴얼/규정 문서의 근거 조항 ID(Citation)를 리포트에 필수로 매핑해야 할까요?",
         ],
     },
 }
@@ -100,7 +112,7 @@ def detect_semiconductor_domains(corpus_text: str) -> List[Tuple[str, Dict[str, 
     lower_corpus = corpus_text.lower()
     matched = []
     for d_key, d_info in DOMAIN_SIGNATURES.items():
-        score = sum(3 if kw.startswith("skhynix-") else 1 for kw in d_info["keywords"] if kw in lower_corpus)
+        score = sum(3 if kw.endswith("-persona") else 1 for kw in d_info["keywords"] if kw in lower_corpus)
         if score > 0:
             matched.append((d_key, d_info, score))
     matched.sort(key=lambda x: x[2], reverse=True)
@@ -235,6 +247,9 @@ def analyze_json(file_path: Path, dm_triggers: List[str], token_accumulator: Lis
 
 def analyze_sqlite(file_path: Path, dm_triggers: List[str], token_accumulator: List[str]) -> str:
     lines = [f"### 🗄️ SQLite DB: `{file_path.name}` (`{file_path}`)"]
+    if sqlite3 is None:
+        lines.append("- ⚠️ sqlite3 모듈 비활성 환경 (건너뜀)")
+        return "\n".join(lines)
     try:
         conn = sqlite3.connect(str(file_path))
         cur = conn.cursor()
@@ -313,10 +328,9 @@ def scan_workspace(root_dir: Path) -> str:
 
     report.extend(tree_lines if tree_lines else ["- (파일 없음)"])
 
-    # 5대 반도체 현업 도메인 자동 감지
+    # 6대 현업 도메인 자동 감지
     detected_domains = detect_semiconductor_domains(" ".join(token_accumulator))
-    report.append("
-## 2. 🔬 SK하이닉스 5대 도메인 솔버 & 아키타입(Archetype) 자동 매핑")
+    report.append("\n## 2. 🔬 핵심 6대 현업 도메인 솔버 & 아키타입(Archetype) 자동 매핑")
     if detected_domains:
         top_key, top_info, top_score = detected_domains[0]
         report.append(f"- 🎯 **1순위 감지 도메인**: **{top_info['name']}** (매칭 점수: {top_score})")

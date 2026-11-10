@@ -1,15 +1,33 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Workspace Inspector & Data Profiler
-과제 시작 시 기존 코드베이스 구조와 데이터 파일(CSV, JSON, MD)의 스키마 및 이상치를 즉시 스캔합니다.
+engine/workspace_inspector.py
+--------------------------------------------------------------------------------
+Workspace Automated Inspection Engine (Cross-Platform)
+
+과제 시작 시 시험 환경의 파일 구조, 데이터 파일(CSV, JSON), 과제 지문(README.md)을
+상대 경로 기준으로 깔끔하게 스캔하여 WORKSPACE_PROFILE.md를 생성합니다.
+(외부/절대 경로 하드코딩 0%, 대용량 가이드 파일 노이즈 스킵)
 """
+
+import csv
+import json
 import os
 import sys
-import json
-import csv
 from pathlib import Path
 
-IGNORE_DIRS = {'.git', 'node_modules', '__pycache__', 'dist', 'build', '.next', '.venv', 'fde-codex-kit'}
+IGNORE_DIRS = {
+    '.git', 'node_modules', '__pycache__', 'dist', 'build', '.next', '.venv',
+    'fde-codex-kit', '.autopilot', 'docs_kit', 'prompt_bank'
+}
+
+SKIP_DOC_NAMES = {
+    'WORKSPACE_PROFILE.md', 'SOLUTION_NOTES.md', 'AGENTS.md', 'AUDITOR_GUIDE.md',
+    'fde_autopilot_manual.md', 'SPEC.md', 'HANDOFF.md', 'SPEC_TEMPLATE.md',
+    'ARCHITECTURE_DECISIONS.md', 'HANDOFF_TEMPLATE.md', 'defense_logic_guide.md',
+    'stakeholder_inquiry_guide.md', 'typing_guide.md', 'step_by_step_prompts.md'
+}
+
 
 def scan_tree(root_path: Path):
     tree_lines = []
@@ -18,29 +36,33 @@ def scan_tree(root_path: Path):
     config_files = []
 
     for root, dirs, files in os.walk(root_path):
-        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+        dirs[:] = [d for d in sorted(dirs) if d not in IGNORE_DIRS]
         rel_root = Path(root).relative_to(root_path)
         level = 0 if str(rel_root) == '.' else len(rel_root.parts)
         indent = "  " * level
         if str(rel_root) != '.':
-            tree_lines.append(f"{indent}📂 {rel_root.name}/")
-        
+            posix_dirname = str(rel_root.name).replace('\\', '/')
+            tree_lines.append(f"{indent}📂 {posix_dirname}/")
+
         for f in sorted(files):
             fpath = Path(root) / f
             rel_fpath = fpath.relative_to(root_path)
+            posix_rel = str(rel_fpath).replace('\\', '/')
             size_kb = fpath.stat().st_size / 1024.0
             tree_lines.append(f"{indent}  📄 {f} ({size_kb:.1f} KB)")
-            
+
             ext = fpath.suffix.lower()
             if ext in {'.csv', '.json', '.jsonl', '.tsv'}:
-                if f not in {'package.json', 'package-lock.json', 'tsconfig.json'}:
-                    data_files.append(rel_fpath)
+                if f not in {'package.json', 'package-lock.json', 'tsconfig.json', 'result.json', 'cofa_probe_report.json', 'pre_opt_diagnosis_report.json', 'optimizer_proposals.json'}:
+                    data_files.append(posix_rel)
             elif ext in {'.md', '.txt'}:
-                doc_files.append(rel_fpath)
-            elif f in {'package.json', 'requirements.txt', 'pyproject.toml'}:
-                config_files.append(rel_fpath)
+                if f not in SKIP_DOC_NAMES:
+                    doc_files.append(posix_rel)
+            elif f in {'package.json', 'requirements.txt', 'pyproject.toml', 'config.toml'}:
+                config_files.append(posix_rel)
 
     return tree_lines, data_files, doc_files, config_files
+
 
 def inspect_csv(fpath: Path):
     try:
@@ -67,6 +89,7 @@ def inspect_csv(fpath: Path):
     except Exception as e:
         return {"error": str(e)}
 
+
 def inspect_json(fpath: Path):
     try:
         with open(fpath, 'r', encoding='utf-8', errors='replace') as fp:
@@ -81,12 +104,13 @@ def inspect_json(fpath: Path):
     except Exception as e:
         return {"error": str(e)}
 
+
 def main():
     target_dir = Path(sys.argv[1]).resolve() if len(sys.argv) > 1 else Path.cwd()
     tree_lines, data_files, doc_files, config_files = scan_tree(target_dir)
 
     print("# 🔍 Workspace Automated Inspection Report\n")
-    
+
     print("## 1. Directory Structure")
     print("```text")
     print("\n".join(tree_lines[:80]))
@@ -94,41 +118,52 @@ def main():
         print(f"... (+{len(tree_lines) - 80} more entries)")
     print("```\n")
 
-    print("## 2. Project Dependencies & Scripts")
-    for cfg in config_files:
+    print("## 2. Project Configurations")
+    for cfg in config_files[:5]:
         full_cfg = target_dir / cfg
-        print(f"### `{cfg}`")
-        print("```")
-        with open(full_cfg, 'r', encoding='utf-8', errors='replace') as fp:
-            print(fp.read()[:1500])
-        print("```\n")
+        if full_cfg.exists():
+            print(f"### `{cfg}`")
+            print("```")
+            try:
+                with open(full_cfg, 'r', encoding='utf-8', errors='replace') as fp:
+                    content = fp.read()[:800]
+                    print(content)
+            except Exception:
+                pass
+            print("```\n")
 
-    print("## 3. Data Assets & Anomaly Scan (EDA)")
+    print("## 3. Data Assets & Anomaly Summary")
     if not data_files:
-        print("- No standalone data files (.csv, .json) detected.\n")
+        print("- No standalone data files (.csv, .json) detected in root. (Will use embedded samples or auto-pipeline)\n")
     for df in data_files[:10]:
         full_df = target_dir / df
-        print(f"### 📊 `{df}`")
-        if full_df.suffix.lower() == '.csv':
-            info = inspect_csv(full_df)
-        else:
-            info = inspect_json(full_df)
-        print("```json")
-        print(json.dumps(info, ensure_ascii=False, indent=2))
-        print("```\n")
+        if full_df.exists():
+            print(f"### 📊 `{df}`")
+            if full_df.suffix.lower() == '.csv':
+                info = inspect_csv(full_df)
+            else:
+                info = inspect_json(full_df)
+            print("```json")
+            print(json.dumps(info, ensure_ascii=False, indent=2))
+            print("```\n")
 
-    print("## 4. Problem Statements & Docs Preview")
-    for doc in doc_files:
-        if doc.name in {'WORKSPACE_PROFILE.md', 'SOLUTION_NOTES.md', 'AGENTS.md'}:
-            continue
+    print("## 4. Problem Statement & Instructions Preview")
+    if not doc_files:
+        print("- No specific challenge problem statement (e.g. README.md) detected. Check repository root.\n")
+    for doc in doc_files[:3]:
         full_doc = target_dir / doc
-        print(f"### 📖 `{doc}`")
-        with open(full_doc, 'r', encoding='utf-8', errors='replace') as fp:
-            content = fp.read()
-            print(content[:2000])
-            if len(content) > 2000:
-                print("\n... [Truncated] ...")
-        print("\n---\n")
+        if full_doc.exists():
+            print(f"### 📖 `{doc}`")
+            try:
+                with open(full_doc, 'r', encoding='utf-8', errors='replace') as fp:
+                    content = fp.read()
+                    print(content[:1500])
+                    if len(content) > 1500:
+                        print("\n... [Truncated for brevity] ...")
+            except Exception:
+                pass
+            print("\n---\n")
+
 
 if __name__ == "__main__":
     main()
