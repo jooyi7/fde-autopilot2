@@ -1,205 +1,253 @@
-# 🚀 FDE-Autopilot 실전 사용자 가이드 (Step-by-Step)
+# 🚀 FDE-Autopilot v6.2 실전 사용자 바이블 (초구체적 3-Terminal 실전 행동 지침)
 
-이 가이드는 응시 환경(Cofa 웹 IDE)에서 어떤 도메인의 과제가 주어지더라도 처음부터 끝까지 막힘없이 프로젝트를 분석, 설계, 개발, 검증 및 최종 제출할 수 있도록 돕는 **통합 실행 매뉴얼**입니다.
-
-우리가 준비한 **19개의 핵심 파일**이 각 단계마다 자연스럽게 등장하니, 적힌 순서대로만 차근차근 따라오시면 됩니다!
-
-## 📂 시작 전 가볍게 보는 전체 파일 구성 (19개 파일)
-
-작업을 시작하기 전, 우리 폴더 안에 어떤 도구들이 준비되어 있는지 한눈에 확인해 보세요.
-
-* **루트 폴더 (`/`)**: 원클릭 초기 세팅 스크립트(`bootstrap.sh`), 환경 설정 파일(`config.toml`), 코딩 AI 헌법(`AGENTS.md`), 독립 감사관 기준서(`AUDITOR_GUIDE.md`), 그리고 지금 보고 계신 통합 매뉴얼(`fde_autopilot.md`)
-* **`engine/` 폴더 (서브 에이전트 스크립트)**: 폴더 및 데이터 자동 분석기(`workspace_inspector.py`, `workspace_profiler.py`), 앱 뼈대 자동 생성기(`scaffold_app.sh`), 핵심 로직 테스트 도구(`verify_core.mjs`, `deterministic_harness.mjs`), 제출 전 최종 검수 도구(`release_gate.py`, `final_gatekeeper.py`)
-* **`docs_kit/` 폴더**: 실무자 10대 심층 질문 가이드(`stakeholder_inquiry.md`), 기획서 템플릿(`SPEC_TEMPLATE.md`), 5대 대안 비교 및 책임 소재 보고서(`ARCHITECTURE_DECISIONS.md`), 최종 인계서 템플릿(`HANDOFF_TEMPLATE.md`), 서술형 방어 논리 가이드(`defense_logic_guide.md`)
-* **`prompt_bank/` 폴더**: 문제 유형 판별 및 타이핑 모범답안(`typing_guide.md`), 단계별 복붙용 AI 프롬프트(`step_by_step_prompts.md`)
+이 문서는 해커톤 대회장에 입장한 응시자가 **"어느 터미널에서, 어떤 파일의 프롬프트를 열어서 복사하고, 무엇을 입력해야 하는지"** 고민할 필요 없이 100% 그대로 따라 할 수 있도록 설계된 **초구체적 실전 행동 매뉴얼**입니다.
 
 ---
 
-## 🖥️ 0. 시험 환경 필수 수칙 & 3-터미널(메인/서브 에이전트) 분리 세팅
+## 💡 핵심 워크플로우 질문에 대한 명확한 답변
 
-작업이 꼬이거나 AI가 환각(Hallucination)을 일으키는 것을 막기 위해, 시작 직후 터미널 창의 `+` 버튼(또는 분할 버튼)을 눌러 **총 3개의 터미널 탭**을 역할별로 나누어 세팅합니다.
-
-1. **터미널 1 [메인 에이전트 - Codex 조종석]**:
-   * 오직 `codex` CLI만 켜두는 전용 창입니다. 과제 시작부터 끝까지 끄지 않고 자연어 지시, 5가지 아키텍처 대안 도출, 코드 생성만 담당합니다.
-   * 실행 직후 `/status`로 권한을 확인하고 `/model`에서 권장 모델(`Sol 6.1`, `Terra 5.6`, `Luna 6`, `Sol 6.0`)을 선택합니다 (`Astra` 사용 절대 금지, 개인 API 키 사용 금지).
-2. **터미널 2 [실시간 서버 - 화면 미리보기용]**:
-   * `npm run dev` 등으로 `0.0.0.0` 웹 서버를 띄워두고 계속 켜두는 창입니다. 우측 상단 Browser 도구에서 실시간으로 화면(UI)을 확인하기 위해 절대 닫지 않습니다.
-3. **터미널 3 [서브 에이전트 - 결정론적 검증 & Git 기록소]**:
-   * 메인 에이전트(터미널 1)의 환각 개입 없이 객관적으로 데이터를 분석(`workspace_profiler.py`)하고, 코드를 테스트(`verify_core.mjs`, `deterministic_harness.mjs`)하며, 매 단계 로컬 `git commit`을 기록하는 검사소입니다.
-   * **외부 전송(`git push`)은 절대 금지**되지만, **로컬 `git 로그·diff`와 테스트 실행 결과는 평가에 직접 반영**되므로 모든 검증과 커밋은 이 3번 터미널에서 수행합니다.
-4. **에디터 저장 충돌 방지**: 터미널 1의 Codex가 파일을 수정했을 때 에디터에서 충돌이 뜨면 **"외부 변경 불러오기"**를 선택해 AI가 작성한 최신 코드를 유지하고, 제출 전 모든 탭이 **"저장됨"** 상태인지 확인하세요.
+> **Q. "원래 데이터 분석하고, 그 다음에 현업 책임 에이전트한테 질문하고, 그 다음에 기존에 주어진 `README.md` + 데이터 분석 정보 + 책임자가 알려준 답변을 가지고 총 계획을 짜는 게 `SPEC.md` 아닌가요?"**
+> 
+> **A. 네, 100% 맞습니다! 그것이 바로 엔지니어링의 정석입니다.**
+> 1. **재료 1**: 과제 `README.md` (시험 문제의 공식 요구사항)
+> 2. **재료 2**: 서브 에이전트가 분석한 `.fde_data_profile.md` (데이터 결측치, 센티널 -999, 3-Sigma 임계치)
+> 3. **재료 3**: 현업 책임 에이전트(페르소나)의 DM 답변 (등호 기준, Cpk 허들, 예외 조치 등)
+> 
+> 이 **3가지 재료가 모두 모여야만 비로소 완벽한 총 실행 계획서인 `SPEC.md`와 5대 대안 비교표(`SOLUTION_NOTES.md`)가 완성**됩니다!
 
 ---
 
-## 🏁 Step 1. 작업 환경 준비 및 서브 에이전트 데이터 자동 분석 (초기 15분)
+## 🖥️ 1. 시작 직후: 3개 터미널 세팅 (00:00)
 
-가장 먼저 내 작업 폴더에 어떤 파일과 데이터가 들어있는지 **터미널 3(서브 에이전트)**의 파이썬 스크립트를 통해 결정론적으로 파악합니다. LLM에게 대용량 원본 데이터를 직접 읽히면 토큰이 낭비되고 환각이 발생하므로 반드시 스크립트로 먼저 스캔하세요.
+웹 IDE나 에디터의 터미널 `+`(또는 분할) 버튼을 눌러 **3개의 창**을 띄우고 아래 역할을 부여합니다.
 
-### 1. 과제 안내서 확인 (`README.md`)
-* 루트의 과제 `README.md`를 열어 **과제 목표, 필수 구현 조건, 필수 제출 문서 파일명**을 가장 먼저 확인합니다.
+* **[Terminal #1] Main Agent (Codex CLI 조종석)**:
+  - `codex`를 실행하고 `/model` 명령어로 권장 모델(`Sol 6.1`, `Terra 5.6`, `Luna 6` 중 택1)을 선택합니다. (*`Astra` 절대 금지*)
+  - 오직 자연어 지시, 설계, 코드 작성 전용으로 사용합니다.
+* **[Terminal #2] Real-time Web Server (0.0.0.0 상시 구동)**:
+  - 추후 `npm run dev`로 웹 서버를 띄워두고 대회 종료까지 **절대 끄지 않는 전용 창**입니다.
+* **[Terminal #3] Sub Agent Worker (결정론 스크립트 실행 & Git 전용)**:
+  - LLM 개입 없는 순수 Python/Node 스크립트 실행(`bootstrap.py`, 하네스, `git commit`) 전용 창입니다.
 
-### 2. 원클릭 초기 진단 실행 (`bootstrap.sh` 👉 터미널 3에서 실행)
-* **터미널 3**을 열고 아래 명령어를 입력합니다.
+---
+
+## 🏃 2. 초구체적 단계별 실전 실행 가이드 (Step 1 ~ Step 6)
+
+---
+
+### 🚀 Step 1. [00:00 ~ 00:15] 데이터 및 과제 원클릭 자동 분석
+
+* **실행 위치**: **`[Terminal #3]` (서브 에이전트 창)**
+* **입력할 명령어**:
   ```bash
-  bash bootstrap.sh --workspace .
+  python bootstrap.py --workspace .
+  # (Linux/Mac/Git Bash 환경인 경우: bash bootstrap.sh --workspace .)
   ```
-* **이 명령어가 하는 일**: 실수로 `git push`를 하지 못하도록 차단 훅을 걸고, 내부적으로 아래 두 개의 서브 에이전트 분석 스크립트와 문서 템플릿들을 자동으로 세팅해 줍니다.
-  * **`engine/workspace_inspector.py`**: 현재 폴더 안의 파일 목록, 문서, 데이터 파일(CSV, JSON, SQLite 등)의 위치와 용량을 스캔하여 `WORKSPACE_PROFILE.md`로 정리합니다.
-  * **`engine/workspace_profiler.py`**: LLM이 아닌 고정 코드로 데이터의 컬럼명, 결측치(`Null`, `-999`), 중복 데이터, 통계적 임계치(3-Sigma), 그리고 실무자 에이전트에게 물어봐야 할 질문 후보를 `.fde_data_profile.md` 파일로 정확히 도출해 줍니다.
-  * **문서 초안 자동 복사**: `docs_kit/` 폴더 안에 있는 `SPEC_TEMPLATE.md`, `ARCHITECTURE_DECISIONS.md`, `HANDOFF_TEMPLATE.md`를 루트 폴더에 각각 `SPEC.md`, `SOLUTION_NOTES.md`, `HANDOFF.md`라는 이름으로 미리 복사해 둡니다.
-
-### 3. 베이스라인 Git 커밋 기록 (터미널 3)
-* 초기 분석과 세팅이 끝났다면 **터미널 3**에서 첫 번째 로컬 커밋을 남깁니다.
+* **동작 내용**:
+  1. 외부 유출 방지를 위한 `git push` 원천 차단 훅(`.git/hooks/pre-push`) 자동 설치.
+  2. 워크스페이스 내 모든 CSV, JSON, MD 파일을 전수 탐색하여 아래 리포트 자동 생성:
+     - `WORKSPACE_PROFILE.md`: `README.md` 요약 및 디렉터리 구조.
+     - `.fde_data_profile.md`: 결측치(`Null`), 센티널(`-999`), 3-Sigma 통계 프로파일.
+     - `.autopilot/pre_opt_diagnosis.md`: 평가지표(정확도 vs 속도), 병목(알고리즘 vs HW) 사전 진단.
+     - `.fde_optimization_proposal.md`: 추천 최적화 기법 순위표.
+     - `output/result.json`: 도메인 자동 판별 및 기준 솔버 1차 결과.
+* **1차 로컬 Git 커밋 실행 (`[Terminal #3]`에서 실행)**:
   ```bash
-  git add -A && git commit -m "chore: initial workspace scan and deterministic data profile"
-  ```
-
----
-
-## 🎯 Step 2. 실무자 10대 심층 질문, 5대 대안 비교 및 기획(`SPEC.md`) 확정
-
-데이터와 요구사항을 확인했다면, 우측 메신저(DM)의 **업무 담당자(실무자 에이전트)**에게 핵심 질문을 던지고, 메인 에이전트(Codex)와 함께 5가지 설계 대안과 책임 소재를 고민하여 기획서를 확정합니다.
-
-### 1. 범용 문제 아키타입(Type A~D) 판별하기 (`prompt_bank/typing_guide.md`, `config.toml`)
-* `prompt_bank/typing_guide.md` 파일의 **Part 1 판별표**와 `.fde_data_profile.md`의 추천 결과를 보고, 오늘 해결해야 할 과제가 아래 **4대 소프트웨어 아키타입 중 어디에 속하는지** 결정합니다.
-  * **Archetype A (지표 모니터링 및 이상 탐지 대시보드)**: 시계열/수치 데이터를 차트와 요약 카드로 보여주고, 임계치 기반 이상 징후를 색상과 표로 필터링하는 시스템.
-  * **Archetype B (규칙 검증 및 차분/Diff 알람 도구)**: 입력된 설정값, 로그, 데이터가 비즈니스 규칙에 맞는지 검사하고, 이전 버전/기준값과 무엇이 달라졌는지 비교(Diff)해 알람을 띄우는 도구.
-  * **Archetype C (문서 검색 및 출처/Citation 기반 질의응답)**: 규정, 매뉴얼, 가이드 문서를 검색하고, 답변을 제시할 때 반드시 원본 문서의 근거 조항(Citation)을 함께 표시하며 문서 외 질문은 거절하는 도구.
-  * **Archetype D (상태 머신 및 승인 백오피스 워크플로우)**: 요청 $\rightarrow$ 검토 $\rightarrow$ 승인/반려처럼 단계별로 상태(State)가 전이되고, 권한별 액션 제어 및 처리 이력(Audit Log)을 남기는 시스템.
-* 유형을 골랐다면 **`config.toml`** 파일을 열어 `default_type = "A"` 부분에 내가 선택한 알파벳(`A`, `B`, `C`, `D`)을 적고 저장합니다.
-
-### 2. 실무자 에이전트(업무 담당자 DM)에게 10대 심층 질문 기반으로 차례대로 물어보기 (`docs_kit/stakeholder_inquiry.md`)
-* **`docs_kit/stakeholder_inquiry.md`** 파일을 열면 담당자에게 차례대로 물어볼 수 있는 **10가지 핵심 질문 리스트**(① 현재 가장 큰 병목 지점, ② 지금까지의 임시 해결 방식, ③ 현업에서 가장 많이 들어오는 민원, ④ 최우선 해결 과업, ⑤ 결측치/이상치 처리, ⑥ 중복 데이터 기준, ⑦ 경계값 등호 기준, ⑧ 다중 알람 우선순위, ⑨ 자동 판정 결과에 대한 최종 책임 소재, ⑩ 필수 출력 항목)가 준비되어 있습니다.
-* 한 번에 10개를 다 보내지 말고, `prompt_bank/step_by_step_prompts.md`의 `[00:02]` 가이드처럼 **1차 질문(현재 문제점·기존 해결방식·최다 민원 파악) $\rightarrow$ 답변 확인 $\rightarrow$ 2차 질문(결측치·경계값·책임 소재 확정)** 순서로 자연스럽게 대화를 이어가세요.
-* **중요 (상충 해결 원칙)**: 만약 `README.md`의 설명이 모호하거나 실무자 에이전트의 답변과 상충할 경우, 실무자 에이전트의 답변을 최종 기준(Ground Truth)으로 반영하고 제출 문서에 *"업무 담당자와의 DM 협의를 통해 ~기준으로 확정함"*이라고 명확히 인용합니다.
-
-### 3. 5가지 대안 비교(선정/거절 이유), 책임 소재 정립 및 `SPEC.md` 작성 (`docs_kit/SPEC_TEMPLATE.md`, `docs_kit/ARCHITECTURE_DECISIONS.md`)
-* **터미널 1(메인 에이전트 Codex)** 입력창에 **`prompt_bank/step_by_step_prompts.md`의 `[Step 1: 00:08]` 프롬프트**를 복사해 붙여넣습니다.
-* **이 단계에서 Codex가 수행하는 핵심 사고 과정**:
-  1. 코딩을 시작하기 전에 문제를 해결할 수 있는 **5가지 아키텍처/기능 대안을 먼저 제안**합니다.
-  2. 그중 **가장 적합한 1가지를 선정한 이유**와 **나머지 4가지를 거절(기각)한 이유**를 명확히 분석합니다.
-  3. 시스템 판정 오류 시 **최종 책임(Accountability)을 누가 질 것인가**에 대해 고민하고, *"1차 수치/규칙 필터링 책임은 결정론 코어(80%)가 지고, AI(20%)는 참고용 조언만 제공하며, 최종 승인 권한과 감사 로그(Audit Trail) 책임은 현업 담당자에게 귀속시킨다"*는 방어 논리와 검증 계획을 수립하여 `SPEC.md`와 `SOLUTION_NOTES.md`(`ARCHITECTURE_DECISIONS.md`)에 기록합니다.
-* 문서 생성이 완료되면 **터미널 3**에서 로컬 커밋을 남깁니다.
-  ```bash
-  git add -A && git commit -m "docs: evaluate 5 alternatives, accountability rules, and complete SPEC.md"
+  git add -A
+  git commit -m "feat: complete workspace profiling and generate baseline result"
   ```
 
 ---
 
-## 🏗️ Step 3. 통합 앱 뼈대 자동 생성 및 Codex 단계별 코딩
+### 💬 Step 2. [00:15 ~ 00:45] 현업 책임자 DM 질의 & 총 계획서(`SPEC.md`) 작성
 
-이제 직접 초기 코드를 다 짤 필요 없이, 스크립트로 통합 앱 뼈대를 만들고 **터미널 1의 메인 에이전트(Codex)**에게 단계별로 구현을 위임합니다.
+#### 2-1. 우측 웹 메신저에서 현업 책임 에이전트(페르소나)에게 DM 질의
+* **참조할 파일**: **`docs_kit/stakeholder_inquiry_guide.md`** (또는 `prompt_bank/step_by_step_prompts.md` 라인 23~37)
+* **어디에 입력?**: 플랫폼 우측 **DM 메신저 (업무 담당자 챗봇)**
 
-### 1. 통합 앱 뼈대(Scaffold) 자동 생성 (`engine/scaffold_app.sh` 👉 터미널 3에서 실행)
-* **터미널 3**에 아래 명령어를 입력합니다.
-  ```bash
-  bash engine/scaffold_app.sh --target . --type A --stack nextjs
+* **[1차 DM 전송] (복사해서 메신저에 붙여넣기)**:
+  ```text
+  안녕하세요 담당자님! 현업에 실질적으로 도움이 되는 시스템을 설계하기 위해 몇 가지 여쭙습니다.
+  1) 현재 이 업무에서 가장 시간이 오래 걸리거나 실수가 발생하는 최대 병목 구간은 어디이며, 지금까지는 어떤 방식(수작업 엑셀 등)으로 해결해 오셨나요?
+  2) 유관 부서나 현업 실무자로부터 가장 많이 들어오는 민원(불만 사항)은 무엇인가요?
+  3) 이번 1차 배포에서 반드시 100% 해결해야 하는 1순위 핵심 기능과 제외해도 되는 기능의 경계를 알려주시면 집중하여 구현하겠습니다!
   ```
-* **이 명령어가 하는 일**: 어떤 도메인 문제든 하나의 통합 웹앱으로 구현할 수 있도록 `src/data`, `src/core`, `src/ai`, `src/components` 4대 레이어 폴더 구조와 `0.0.0.0` 바인딩이 내장된 `package.json`, `vite.config.js`를 자동으로 만들어 줍니다.
 
-### 2. 단계별 프롬프트로 코딩 위임 및 단계별 Git Commit (`prompt_bank/step_by_step_prompts.md`)
-* **터미널 1(Codex)**에 `prompt_bank/step_by_step_prompts.md`의 프롬프트를 순서대로 복사해 지시하고, 각 단계가 끝날 때마다 **터미널 3**에서 검증 및 `git commit`을 수행합니다.
-  1. **Step 2 프롬프트 (4-Layer 스캐폴딩 & E2E v0 관통)**: 3종 골든 샘플(`src/data/samples.js`), 결정론 코어(`src/core/rules.js`), AI 리포터(`src/ai/reporter.js`), 대시보드 화면(`src/components/Dashboard.jsx`)을 연결합니다.
-     * 곧바로 **터미널 2**에서 `npm install && npm run dev`로 `0.0.0.0` 서버를 띄우고, **터미널 3**에서 커밋합니다:
-       ```bash
-       git add -A && git commit -m "feat: scaffold 4-layer architecture and e2e v0"
-       ```
-     * *(팁: 터미널 1의 Codex 대화 로그가 길어지면 `/clear`를 입력해 토큰을 절약하세요!)*
-  2. **Step 3-A 프롬프트 (전처리 파서 및 Core 결정론 로직 정밀 구현)**: 어떠한 비정상 데이터(결측치, 타입 오류, 빈 배열 등)가 들어와도 LLM이 아닌 고정 코드로 전처리하고 계산하는 `sanitizeAndParseInput()`과 `evaluateCoreRules()`를 완벽히 구현하게 합니다.
-     * 구현 직후 **터미널 3**에서 검증 스크립트를 돌리고 커밋합니다:
-       ```bash
-       node engine/verify_core.mjs && node engine/deterministic_harness.mjs
-       git add -A && git commit -m "feat: implement deterministic data preprocessor and core rules"
-       ```
-  3. **Step 3-B 프롬프트 (AI/UI 결합 및 SPEC 증거 좌표 매핑)**: 코어 판정 결과를 화면 배지(NORMAL/WARNING/VIOLATION) 및 AI Fallback 리포트와 연결하고, `SPEC.md`의 각 기능 옆에 실제 구현된 파일명과 함수명(`[구현 좌표: src/core/rules.js - evaluateCoreRules()]`)을 적어넣게 합니다.
-     * **터미널 3**에서 커밋합니다:
-       ```bash
-       git add -A && git commit -m "feat: connect UI, AI fallback, and map SPEC coordinates"
-       ```
+* **[2차 DM 전송] (1차 답변 수신 후, `.fde_data_profile.md` 내용 반영하여 붙여넣기)**:
+  ```text
+  상세한 답변 감사드립니다! 데이터를 코드로 정밀 분석해 보니 일부 결측치(Null/-999)와 경계 조건이 확인되어 추가 확인 부탁드립니다.
+  1) 데이터 내 결측치나 센티널(-999) 값은 전체 통계 분모에서 완전히 제외할까요, 아니면 별도 오류 상태로 화면에 분류할까요? 또한 중복 식별자 유입 시 최신 1건만 유지하면 될까요?
+  2) 정상/경고/위반을 가르는 임계치 숫자와 정확히 일치할 때 이상(>=)과 초과(>) 중 어느 쪽으로 판정해야 하나요?
+  3) 시스템 판정 결과에 대한 최종 책임(Accountability)을 위해 화면 리포트와 감사 로그(Audit Trail)에 반드시 남겨야 할 필수 항목(규칙 ID, 근거 수치, 권장 SOP, 담당자 승인 버튼 등)을 알려주세요!
+  ```
+
+#### 2-2. 총 계획서(`SPEC.md`) 및 5대 대안 비교표(`SOLUTION_NOTES.md`) 생성
+* **참조할 파일**: **`prompt_bank/step_by_step_prompts.md`** 의 **`[Step 1: 00:08]`** 섹션
+* **실행 위치**: **`[Terminal #1]` (Codex CLI 메인 에이전트)**
+* **Codex에 붙여넣을 프롬프트**:
+  ```text
+  AGENTS.md를 읽고 핵심 원칙(80/20 분리, 3-터미널 역할)을 숙지해 줘.
+  아직 src/ 코드는 작성하지 마. 토큰 절약을 위해 원본 데이터 파일을 직접 cat으로 읽지 말고, 서브 에이전트가 만든 .fde_data_profile.md 요약본과 README.md, 그리고 방금 내가 담당자 DM으로 확인한 아래 답변 내용을 결합하여 루트에 SPEC.md와 SOLUTION_NOTES.md를 작성해 줘.
+
+  [담당자 DM 확인 내용]:
+  (여기에 방금 메신저로 받은 담당자의 답변 내용을 그대로 붙여넣으세요)
+
+  1. SOLUTION_NOTES.md (5대 아키텍처 대안 비교 및 책임 소재 설계):
+     - 문제 해결 대안 5가지(① 80/20 결정론 코어+AI Fallback 웹앱, ② 100% LLM 연산 처리, ③ 무거운 외부 DB+MSA, ④ AI 없는 하드코딩 스크립트, ⑤ 클라이언트 원본 렌더링)의 장단점을 비교표로 작성.
+     - 1번을 선정한 이유와 나머지 4개를 기각한 사유(환각 위험, OOM, 유지보수성 등)를 명확히 서술.
+     - 책임 소재(Accountability): "1차 수치/규칙 무결성 책임은 결정론 코어(80%)가 지고, AI(20%)는 보조 요약만 제공하며, 최종 예외 승인 책임은 감사 로그와 함께 현업 담당자에게 귀속한다"고 명시.
+
+  2. SPEC.md (요구사항 서면 합의서 및 9단계 순차 구현 실행서):
+     - 문제 정의 및 기존 수작업 한계, 최다 민원 해결 목표.
+     - 실무자 DM 확인 불변 규칙 (결측치 -999 전처리 기준, 중복 제거, 등호 기준).
+     - 매핑된 레퍼런스 솔버(engine/solver_*.py)의 수리 알고리즘 이식 계획.
+     - 1단계부터 9단계까지 순차적 구현 로드맵 (Step 1~2: 파서/골든샘플 ➔ Step 3~4: 코어 수치/임계치 판정 ➔ Step 5: 솔버/결과JSON ➔ Step 6: AI Fallback ➔ Step 7~8: 대시보드 UI/What-If ➔ Step 9: 게이트키퍼)과 예정 [구현 좌표: 파일명 - 함수명()] vs Out-of-Scope 범위.
+  ```
+
+* **2차 로컬 Git 커밋 실행 (`[Terminal #3]`에서 실행)**:
+  ```bash
+  git add -A
+  git commit -m "docs: evaluate 5 alternatives, accountability rules, and complete SPEC.md"
+  ```
 
 ---
 
-## 🔍 Step 4. 서브 에이전트 무결성 검증 및 내장 Browser 확인
+### 🔥 Step 3. [00:45 ~ 02:45] [가장 중요한 본체] 코어 룰 정밀 코딩 & TDD 하네스 검증 (2시간 집중)
 
-코드를 작성할 때마다 **터미널 3(서브 에이전트)**의 두 검증 스크립트와 **터미널 2 + Browser 도구**를 통해 실제 동작을 교차 검증합니다.
+이 단계가 해커톤의 성패를 가르는 가장 핵심 코딩 구간입니다. 외부 라이브러리 없는 순수 함수(Pure Function)로 코어 규칙을 짜고, 3초짜리 하네스로 즉시 검증하며 완성합니다.
 
-### 1. 핵심 로직 테스트 및 5대 시나리오 하네스 실행 (`engine/verify_core.mjs`, `engine/deterministic_harness.mjs` 👉 터미널 3)
-* **터미널 3**에서 아래 두 명령어를 실행합니다.
+#### 3-1. 결정론 코어 로직 집중 코딩 지시
+* **참조할 파일**: **`prompt_bank/step_by_step_prompts.md`** 의 **`[Step 3-A: 00:40]`** 섹션
+* **실행 위치**: **`[Terminal #1]` (Codex CLI)**
+* **Codex에 붙여넣을 프롬프트**:
+  ```text
+  SPEC.md와 매핑된 레퍼런스 솔버(engine/solver_*.py)를 기반으로, UI나 외부 네트워크 호출 없이 오직 src/data/samples.js(전처리 파서)와 src/core/rules.js(결정론 코어 엔진)의 로직만 완벽하게 구현해 줘.
+
+  1. src/data/samples.js:
+     - Null, 빈 문자열, NaN, 센티널 -999, INVALID 플래그 등 어떠한 비정상 데이터가 유입되어도 크래시 없이 분리하는 sanitizeAndParseInput() 함수 완성.
+     - 과제 스키마에 맞춘 3종 골든 샘플(normal, warning, violation) 데이터 객체 작성.
+
+  2. src/core/rules.js:
+     - evaluateCoreRules(inputPayload): SPEC.md에서 확정한 임계치 상수(THRESHOLD_CONFIG), 계산 수식, 이상치 격리, 적용 규칙 ID(ruleId), 점수(score)를 산출하는 100% 순수 함수로 구현.
+     - 도메인 특화 수식(포토 HOWA/Feedforward, 소재 Cpk/유사도, 시장 OPM/Mix, 밸류체인 ROIC, 교육 DAG, 범용 최적화 등)을 완벽히 이식할 것.
+  ```
+
+#### 3-2. TDD 하네스 즉시 검증 (코드 수정할 때마다 수시로 실행!)
+* **실행 위치**: **`[Terminal #3]` (서브 에이전트 창)**
+* **입력할 명령어 (소요 시간: 3초)**:
   ```bash
-  node engine/verify_core.mjs
   node engine/deterministic_harness.mjs
   ```
-* **이 두 서브 에이전트 스크립트가 하는 일**:
-  * **`engine/verify_core.mjs`**: 숫자 변환 안전성, 상·하한 경계값 판정, `null`이나 빈 문자열(`""`) 입력 시 크래시가 없는지 단언(Assertion) 테스트를 수행합니다.
-  * **`engine/deterministic_harness.mjs`**: `src/core/rules.js`와 `src/data/samples.js`를 불러와서 **① 정상 케이스, ② 경계값(Warning) 케이스, ③ 위반(Violation) 케이스, ④ 파괴적 Null 입력 방어, ⑤ AI API 타임아웃 시 0.1초 내 결정론 Fallback 리포트 복구**까지 5가지 시나리오가 모두 `PASS(5/5)`하는지 객관적으로 증명합니다.
-
-### 2. 내장 Browser 미리보기 검증 (터미널 2 유지 상태)
-* **PORT 및 URL 연결**: **터미널 2**에 출력된 실제 포트 번호(예: `5173`, `3000` 등)를 내장 Browser 도구의 `PORT` 입력란에 넣고 새로고침(원형 화살표)을 누릅니다.
-* **기능 직접 클릭**: 상단의 3종 골든 샘플 버튼(정상/경고/위반), 필터, 입력창을 직접 클릭해 상태 배지와 수치가 즉시 바뀌는지 확인합니다.
-
----
-
-## 📝 Step 5. 최종 제출 문서 완성 및 독립 감사관(Auditor) 교차 검증
-
-제출 문서는 Codex와 대화하여 작성할 수 있으며 AI 활용으로 인한 불이익이 없습니다. 단, **과제 `README.md`에서 요구한 필수 파일명**이 있다면 반드시 그 파일명으로 맞추어 저장하세요.
-
-### 1. 인수인계서 및 5대 대안/책임 소재 보고서 완성 (`docs_kit/HANDOFF_TEMPLATE.md`, `docs_kit/ARCHITECTURE_DECISIONS.md`)
-* **터미널 1(Codex)** 입력창에 **`prompt_bank/step_by_step_prompts.md`의 `[Step 4-A: 01:20]` 프롬프트**를 복사해 붙여넣습니다.
-* Codex가 루트 경로의 **`HANDOFF.md`**와 **`SOLUTION_NOTES.md`**(또는 `ARCHITECTURE_DECISIONS.md`)를 실제 구현된 파일명·함수명에 맞춰 최종 완성합니다.
-  * **`SOLUTION_NOTES.md` (`ARCHITECTURE_DECISIONS.md`)**: 80/20 분리 원칙, **5가지 대안 중 최선책 1개 선정 및 4개 거절 사유**, **오판 시 책임 소재(Accountability) 및 검증 체계**, 실무자 DM 협의 반영 내용을 담습니다.
-  * **`HANDOFF.md` (`HANDOFF_TEMPLATE.md`)**: 데이터 파이프라인 흐름도와 함께, 사후 서술형 대비용 3단계 기술 리스크 분석(구체적 약점 지목 $\rightarrow$ 현장 파급 위험 $\rightarrow$ 정량적 검증 및 개선 계획)을 담아냅니다.
-
-### 2. 서브 에이전트 독립 품질 감사관(Auditor) 점검 (`AUDITOR_GUIDE.md`)
-* **터미널 3**에서 새로운 검증 세션으로 점검하거나, **`prompt_bank/step_by_step_prompts.md`의 `[Step 4-B: 01:30]` 프롬프트**를 사용해 `AUDITOR_GUIDE.md`의 4대 감사 기준(① 문서와 실제 코드 함수명 불일치 적발, ② 빈 값/특수문자 입력 시 크래시 방어 패치, ③ 3종 골든 샘플 동작 확인, ④ `HANDOFF.md` 리스크 분석 정밀화)을 최종 점검합니다.
-
----
-
-## 🚪 Step 6. 최종 관문(Gatekeeper) 통과, 제출 및 후속 서술형 대비 (종료 10분 전)
-
-작업 시간(180분) 종료 **최소 10분 전**에는 코드 수정을 멈추고 **터미널 3**에서 최종 검수 스크립트 실행 및 제출 절차를 시작합니다.
-
-### 1. 릴리즈 게이트 및 최종 게이트키퍼 실행 (`engine/release_gate.py`, `engine/final_gatekeeper.py` 👉 터미널 3)
-* **터미널 3**에서 임시 분석 파일을 지우고 마지막 로컬 커밋을 남긴 뒤, 두 개의 최종 검수 스크립트를 실행합니다.
+  - **목표**: `📊 최종 하네스 성적표: 6 / 6 항목 완벽 통과` 가 뜰 때까지 `src/core/rules.js` 코드를 보강합니다.
+* **최적화 솔버 연동 및 결과 파일 갱신**:
   ```bash
-  rm -f .fde_data_profile.md .fde_audit_report.md
-  git add -A && git commit -m "chore: pass final audit and prepare release"
-  python3 engine/release_gate.py
-  python3 engine/final_gatekeeper.py
+  python engine/auto_solver_pipeline.py --workspace .
+  # output/result.json 파일이 최신 결과로 갱신되었는지 확인
   ```
-* **이 두 스크립트가 하는 일**:
-  * **`engine/release_gate.py`**: 루트 경로에 마크다운 문서가 비어있지 않은지, 코드에 `localhost` 바인딩이나 개인 API 키(`sk-...`)가 남아있지 않은지 스캔합니다.
-  * **`engine/final_gatekeeper.py`**: Git 미커밋 여부, 보안 시크릿, `0.0.0.0` 바인딩, 필수 문서(`SPEC.md`, `HANDOFF.md`, `AGENTS.md`), `deterministic_harness.mjs` 통과 여부, 메모리(OOM) 상태까지 6대 관문을 종합 판정하고, **터미널 하단에 후속 서술형 대비 4문장 핵심 암기 브리핑을 출력**해 줍니다.
-* 에디터 상단 탭을 모두 확인하여 저장되지 않은 변경(`●`)이나 충돌 표시가 없는지 확인하고 `Ctrl+S` (`Cmd+S`)로 완전히 저장합니다.
 
-### 2. 후속 서술형(6문항 / 문항당 5분) 대비 핵심 키워드 암기 (`docs_kit/defense_logic_guide.md`, `prompt_bank/typing_guide.md`)
-* 상단의 "제출하고 문제풀기" $\rightarrow$ "제출물 확정하고 문제풀기"를 누른 순간부터는 파일을 수정할 수 없으며, 이어지는 후속 서술형에서는 **AI 사용, 복사·붙여넣기(`Ctrl+V`), 책상 위 종이 메모지 사용이 전면 금지**됩니다 (100% 직접 타이핑 필수).
-* 따라서 제출 확정 버튼을 누르기 직전, 터미널 3에 출력된 `final_gatekeeper.py` 요약본과 **`docs_kit/defense_logic_guide.md`**, **`prompt_bank/typing_guide.md` (Part 2 만점 공식)**를 눈으로 읽고 아래 4가지를 반드시 머릿속에 기억하고 넘어가세요:
-  1. **내가 구현한 핵심 파일명과 함수명 3세트**:
-     * 결정론 코어(80%): `src/core/rules.js` 의 `evaluateCoreRules()`
-     * AI 및 Fallback 안전장치(20%): `src/ai/reporter.js` 의 `generateInsightWithFallback()`
-     * 데이터 전처리 파서 및 3종 골든 샘플: `src/data/samples.js` 의 `sanitizeAndParseInput()` 및 `GOLDEN_SAMPLES`
-  2. **5가지 대안 중 현재 아키텍처를 선정한 이유와 책임 소재(Accountability)**: LLM 단독 처리나 무거운 DB를 거절하고, 오판 책임을 명확히 통제하기 위해 산술 판정(80% 코어)과 해석(20% AI)을 분리했으며 최종 승인은 감사 로그와 함께 담당자에게 귀속시켰다는 점
-  3. **실무자 에이전트(DM)와 협의하여 처리한 예외 기준 1개**: 결측치(`Null`/`-999`) 분리 기준 및 임계치 경계값 등호(`>=` vs `>`) 판정 기준
-  4. **현재 구현의 한계점과 개선 방향 (3단 논법)**: 대용량 입력 시 단일 스레드 인메모리 순회 병목(약점) $\rightarrow$ 동시 유입 시 화면 블로킹 및 지연 위험(파급 위험) $\rightarrow$ 더미 부하 테스트로 임계치 계측 후 해시 캐싱·SQLite 영속화·Web Worker 비동기 큐 도입(검증 및 개선 계획)
+* **3차 로컬 Git 커밋 실행 (`[Terminal #3]`에서 실행)**:
+  ```bash
+  git add -A
+  git commit -m "feat: implement deterministic core rules and pass 6/6 harness"
+  ```
 
 ---
 
-## 🔬 부록: SK하이닉스 5대 현업 도메인 전용 레퍼런스 솔버 (`engine/solver_*.py`) 활용 가이드
+### 🖥️ Step 4. [02:45 ~ 03:45] 웹 콘솔 스캐폴딩 & 0.0.0.0 실시간 프리뷰
 
-이번 `v3.0` 패키지에는 SK하이닉스 5대 출제 도메인의 핵심 병목을 해결하는 **5개의 결정론적 도메인 솔버**가 탑재되어 있습니다. `workspace_profiler.py` 실행 시 과제 데이터셋과 `README.md`를 스캔하여 자동으로 매핑되며, 아래 명령어로 언제든 단독 실행 및 검증할 수 있습니다.
-
-1. **`engine/solver_overlay.py` (이천 포토기술팀 - Overlay 품질 및 장비 운영)**
-   * **핵심 해결 로직**: ① 1~3차 고차 비선형 웨이퍼 변형(HOWA) + 전공정(Etch/Dep) 박막 스트레스 Feed-forward APC 결합 보정, ② 웨이퍼 엣지(Edge) 취약도 기반 스마트 샘플링(Metrology TAT 절감), ③ 스캐너 Chuck-to-Chuck vs 식각 챔버 원인 귀속 판별 및 대기시간(Queue Time) 고려 최적 스캐너 라우팅.
-2. **`engine/solver_material.py` (SK하이닉스 소재품질팀 - 신규 소재 및 공급사 변경 검토)**
-   * **핵심 해결 로직**: ① CoA 스펙 내 불량(In-Spec Excursion) 탐지를 위한 스펙트럼 화학 지문(Fingerprint Cosine 유사도 & 미측정 피크) 분석, ② Mother Lot 간 $C_{pk}$ 산포 및 양산(HVM) 배관 체류시간·펌프 전단응력 가속 열화 평가, ③ 하위 2·3차 공급사(Sub-tier) 무단 4M 변경 은폐 및 계보(Genealogy) 추적 감사.
-3. **`engine/solver_market.py` (SK하이닉스 시장전략팀 - 메모리 시장 및 경쟁사 실적 분석)**
-   * **핵심 해결 로직**: ① 마이크론(8월 결산) vs SK하이닉스/삼성전자(12월 결산) Calendarization(CQ) 시점 정규화 및 통화/Bit 단위 단일화, ② 고부가 HBM3E/DDR5 확대로 인한 Blended ASP 착시를 발라내는 $P 	imes Q 	imes Mix$ 변동 분해, ③ 어닝콜 IR 낙관 발언과 실제 재무 선행지표(재고일수 DIO, CAPEX 집행률) 간의 모순(Red Flag) 자동 적발.
-4. **`engine/solver_value_chain_biz.py` (경영전략팀 시장분석 - `skhynix-value-chain-business-persona`) [신규 추가]**
-   * **핵심 해결 로직**: ① 전방 CSP 수요 충격이 16개월 장비 리드타임과 맞물려 증폭되는 채찍 효과(Bullwhip Effect) 및 외부 TSMC CoWoS 패키징/베이스 다이 병목에 의한 출하 상한선(Ceiling) 계산, ② HBM 다이 페널티(Die Penalty)와 Bit당 설비투자(Capital Intensity)를 반영한 WACC 대비 ROIC 최적 포트폴리오 배분, ③ 대중국 장비 규제 및 관세 충격에 대응하는 Fab 간 물량 스왑 동적 시나리오 트리.
-5. **`engine/solver_curriculum.py` (반도체 산업교육 - `skhynix-value-chain-educator-persona`)**
-   * **핵심 해결 로직**: ① 역추적(Backtracking) 및 Kahn 위상정렬 기반 선수과목 DAG 검증(순환 참조 적발 및 시간 상한 이연), ② 비전공자 오개념 방지를 위한 `[직관적 비유 + 공학적 한계 교정]` 2-Layer 설명 가드레일, ③ `[물리적 한계 -> 기술 해법 -> 공정 지표 개선 -> 재무/수익성 임팩트]` 4단계 밸류체인 스토리라인 및 직무별(구매/재무/엔지니어) 맞춤형 소크라틱 퀴즈 생성.
-
-* **5대 도메인 솔버 일괄 무결성 자가진단 명령어 (터미널 3)**:
+#### 4-1. 앱 스캐폴딩 실행
+* **실행 위치**: **`[Terminal #3]` (서브 에이전트 창)**
+* **입력할 명령어**:
   ```bash
-  python3 engine/blackbox_emulator.py --verify-solvers
+  python engine/scaffold_app.py
+  npm install
   ```
+
+#### 4-2. 0.0.0.0 실시간 서버 기동 (대회 종료까지 유지)
+* **실행 위치**: **`[Terminal #2]` (웹 서버 전용 창으로 이동!)**
+* **입력할 명령어**:
+  ```bash
+  npm run dev
+  ```
+  - `0.0.0.0:5173` 주소로 서버가 기동되며, 이 터미널은 절대 닫지 않습니다.
+
+#### 4-3. AI 어댑터 및 대시보드 UI 연동 지시
+* **참조할 파일**: **`prompt_bank/step_by_step_prompts.md`** 의 **`[Step 3-B: 01:00]`** 섹션
+* **실행 위치**: **`[Terminal #1]` (Codex CLI)**
+* **Codex에 붙여넣을 프롬프트**:
+  ```text
+  검증된 src/core/rules.js 코어와 src/ai/reporter.js, 그리고 src/components/Dashboard.jsx를 연결해 줘.
+  1. src/ai/reporter.js: AI API 호출 실패나 1.5초 타임아웃 시 0.1초 내로 코어 판정 수치 기반 표준 SOP 리포트를 반환하는 generateInsightWithFallback() 구현.
+  2. src/components/Dashboard.jsx:
+     - 상단에 3종 골든 샘플 버튼([정상 샘플], [경고 샘플], [위반 샘플]) 클릭 시 상태 배지(NORMAL/WARNING/VIOLATION)가 즉시 바뀌도록 바인딩.
+     - "📂 실제 과제 파일 자동 로드" 버튼 및 "💾 결과 JSON 파일 Export" 버튼 동작 확인.
+     - What-If 제약 슬라이더로 파라미터 변경 시 코어 수치가 실시간 반응하도록 연결.
+  ```
+
+* **내장 브라우저(`http://0.0.0.0:5173`)에서 직접 눈으로 확인**:
+  - 버튼 클릭 시 상태 배지 색상 변화 확인 (초록/노랑/빨강)
+  - What-If 슬라이더 조작 시 수치 변화 확인
+  - AI 503 장애 유발 체크박스 체크 시 0.1초 내 Fallback 리포트 복구 확인
+
+* **4차 로컬 Git 커밋 실행 (`[Terminal #3]`에서 실행)**:
+  ```bash
+  git add -A
+  git commit -m "feat: scaffold web console and verify 0.0.0.0 live preview"
+  ```
+
+---
+
+### 📝 Step 5. [03:45 ~ 05:15] 평가위원용 3대 필수 문서 완성
+
+평가위원이 채점 시 정독하는 3대 문서를 완성합니다.
+
+* **실행 위치**: **`[Terminal #1]` (Codex CLI)**
+* **Codex에 붙여넣을 프롬프트**:
+  ```text
+  지금까지 구현된 실제 파일 경로와 함수명을 바탕으로 루트 경로의 3대 문서를 최종 완성해 줘.
+
+  1. SPEC.md: In-Scope 항목 옆에 실제 구현된 파일과 함수명을 [구현 좌표: 파일명 - 함수명()] 형식으로 100% 매핑.
+  2. SOLUTION_NOTES.md: 5대 아키텍처 대안 비교표, 1개 선정 및 4개 기각 사유, 결정론 코어 80% / AI 20% 책임 소재(Accountability) 매트릭스를 정밀 보강.
+  3. HANDOFF.md: 유지보수자를 위한 인계서 작성:
+     - 0.0.0.0 서버 실행 방법 (`npm run dev`)
+     - 비즈니스 임계치 수정 위치 (`src/core/rules.js` 상단 THRESHOLD_CONFIG)
+     - 결정론 하네스 실행 명령어 (`node engine/deterministic_harness.mjs`)
+     - [3단 리스크 분석]: 실제 구현된 파일명/함수를 지목한 기술적 한계점 3가지, 비즈니스 파급 위험, 향후 개선 계획 상세 서술.
+  ```
+
+* **5차 로컬 Git 커밋 실행 (`[Terminal #3]`에서 실행)**:
+  ```bash
+  git add -A
+  git commit -m "docs: finalize SPEC, SOLUTION_NOTES, and HANDOFF documentation"
+  ```
+
+---
+
+### 🛡️ Step 6. [05:15 ~ 06:00] 최종 게이트키퍼 무결성 감사 & 안전 제출
+
+제출 직전 감점 요인을 완전히 없애기 위해 자동 게이트키퍼 검사를 돌립니다.
+
+* **실행 위치**: **`[Terminal #3]` (서브 에이전트 창)**
+* **입력할 명령어**:
+  ```bash
+  # 1. 11대 솔버 전수 검증 (11/11 PASS 확인)
+  python engine/blackbox_emulator.py --verify-solvers
+
+  # 2. JS 결정론 코어 하네스 (6/6 PASS 확인)
+  node engine/deterministic_harness.mjs
+
+  # 3. 최종 게이트키퍼 7대 관문 검사 (PASS: 7 | WARN: 0 | FAIL: 0 확인)
+  python engine/final_gatekeeper.py .
+  ```
+
+* **최종 Git 커밋 및 상태 확인 (`[Terminal #3]`에서 실행)**:
+  ```bash
+  git add -A
+  git commit -m "chore: final submission readiness verified by gatekeeper"
+  git status
+  # "nothing to commit, working tree clean" 확인!
+  ```
+
+* **제출 확인**:
+  - `output/result.json` 파일 존재 확인.
+  - 웹 IDE의 모든 열린 파일 탭에서 `Ctrl + S`를 눌러 저장 상태 확인 후 **최종 제출 완료!**

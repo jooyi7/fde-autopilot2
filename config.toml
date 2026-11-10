@@ -1,4 +1,5 @@
-# Codex CLI Configuration (Domain-Agnostic Standard)
+# Codex CLI Configuration (Domain-Agnostic Standard & Optimization Architecture)
+
 [agent]
 # 가이드라인 9장 권장 모델 (Sol 6.1, Terra 5.6, Luna 6, Sol 6.0 중 택1 / Astra 사용 절대 금지)
 default_model = "Sol-6.1"
@@ -25,4 +26,118 @@ ignore_patterns = [
 [execution]
 # 내장 Browser 미리보기 연결을 위해 0.0.0.0 바인딩 필수
 default_host = "0.0.0.0"
-timeout_seconds = 120
+timeout_seconds = 60
+
+# ==============================================================================
+# [Optimization Strategy & Metric Goals]
+# "이 문제의 평가지표가 정확도인가 속도인가?" 에 대한 최상위 타깃 설정
+# ==============================================================================
+[optimization]
+# target_metric: "auto" (자동 진단) | "accuracy" (정확도/수율/품질 극대화) | "speed" (지연시간/처리량/실시간 극대화) | "balanced" (파레토 절충)
+target_metric = "auto"
+
+# preferred_strategy: "auto" | "exact" (Branch & Bound, DP 등 증명된 최적해) | "heuristic" (Greedy, Simulated Annealing)
+preferred_strategy = "auto"
+
+# 시간 제약 (초 단위, 해커톤 제한시간 및 실시간 호출 SLA)
+time_budget_seconds = 30.0
+
+# 목표 품질/정확도 허들 레이트 (0.0 ~ 1.0)
+accuracy_hurdle = 0.95
+
+# 조기 종료(Early Stopping) 허용 에포크
+early_stopping_patience = 5
+
+# ==============================================================================
+# [Bottleneck Diagnosis & Hardware Resource Limits]
+# "병목이 알고리즘(시간 복잡도)에 있는가 하드웨어(자원 한계)에 있는가?" 제어 임계값
+# ==============================================================================
+[bottleneck]
+# 조합 최적화(배낭/Set-Cover/순열)에서 정확해(B&B/전수조사)를 시도할 최대 아이템 수
+# N <= 24: O(2^N) 지수 탐색 가능 (Branch & Bound 정확해)
+# N > 24: 지수 폭발 방지를 위해 Simulated Annealing / Greedy 메타휴리스틱으로 자동 전환
+combinatorial_exact_limit = 24
+
+# 대용량 데이터 기준 행(Row) 수 (이 값 초과 시 Pandas/Pure Python 대신 NumPy 벡터화 및 스트리밍 청킹 가동)
+large_data_threshold_rows = 30000
+
+# 메모리 경고 임계치 (MB 단위)
+memory_warning_mb = 1024.0
+
+# 파일 I/O 스트리밍 청크 사이즈 (행 단위)
+io_chunk_size = 10000
+
+# 멀티프로세싱 / 벡터화 가속 허용 여부
+enable_multiprocessing = true
+
+# ==============================================================================
+# [11-Domain Solvers Parameter Tuning & Spec Limits]
+# 도메인별 핵심 비즈니스 룰 및 제약조건 파라미터 (비개발자도 즉시 튜닝 가능)
+# ==============================================================================
+[solvers.domain_overlay]
+m3s_spec_nm = 2.0
+smart_sampling_ratio = 0.35
+chuck_matching_weight = 0.6
+queue_time_weight = 0.4
+
+[solvers.domain_material]
+min_cpk = 1.33
+cosine_similarity_threshold = 0.985
+single_vendor_cap_pct = 70.0
+secondary_vendor_share_pct = 30.0
+max_pipe_residence_hours = 24.0
+
+[solvers.domain_market]
+dio_spike_days = 7.0
+fine_grid_step_pct = 0.5
+coarse_grid_step_pct = 5.0
+underlying_opm_nrv_reversal_deduct = true
+
+[solvers.domain_value_chain]
+wacc_pct = 8.5
+holding_cost_musd_per_bgb = 0.45
+lta_commitment_enforce = true
+china_fab_swap_contingency = true
+
+[solvers.domain_educator]
+default_max_hours = 40.0
+microlearning_compress_ratio = 0.5
+cycle_violation_strict_block = true
+
+[solvers.type_a]
+# Type A: Text Rule, Local RAG & Equipment Alarm
+pass_threshold = 80.0
+alarm_time_budget_mins = 30.0
+rag_top_k = 3
+
+[solvers.type_b]
+# Type B: Wafer Map Spatial Defect & Step Yield
+wafer_radius_mm = 150.0
+spare_repair_limit = 10
+min_yield_pct = 75.0
+pca_aspect_ratio_scratch_threshold = 8.0
+
+[solvers.type_c]
+# Type C: FDC Time-Series Sensor Anomaly & Bayes Threshold
+cost_false_alarm = 10.0
+cost_missed_fault = 50.0
+cusum_k_factor = 0.5
+cusum_h_factor = 4.0
+
+[solvers.type_d]
+# Type D: Workflow State Machine & Equipment PM RUL
+available_pm_slots = 2
+default_weibull_beta = 2.5
+urgent_pm_dday_threshold = 1
+
+[solvers.type_e]
+# Type E: Process Recipe Parameter Diff & Cpk Margin
+target_cpk = 1.33
+max_spec_margin_usage_pct = 80.0
+min_norm_l2_tuning = true
+
+[solvers.universal]
+# Universal Ops: 다목적 제약 최적화
+default_budget = 200.0
+default_capacity = 30.0
+priority_hard_constraint = "budget" # "budget" | "mandatory_tasks"

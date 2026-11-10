@@ -52,7 +52,22 @@ if [ -f "$REPO_DIR/engine/workspace_profiler.py" ]; then
     python3 "$REPO_DIR/engine/workspace_profiler.py" --root "$WORKSPACE_ROOT" --out "$WORKSPACE_ROOT/.fde_data_profile.md"
     cp "$WORKSPACE_ROOT/.fde_data_profile.md" "$WORKSPACE_ROOT/.autopilot/workspace_profile.md" 2>/dev/null || true
 fi
-echo " -> Saved scan & profile reports (.fde_data_profile.md & .autopilot/workspace_profile.md)"
+if [ -f "$REPO_DIR/engine/cofa_probe.py" ]; then
+    python3 "$REPO_DIR/engine/cofa_probe.py" --root "$WORKSPACE_ROOT" --out "$WORKSPACE_ROOT/.autopilot/cofa_probe_report.json" 2>/dev/null || true
+fi
+if [ -f "$REPO_DIR/engine/legacy_test_doctor.py" ]; then
+    python3 "$REPO_DIR/engine/legacy_test_doctor.py" --root "$WORKSPACE_ROOT" --out "$WORKSPACE_ROOT/.autopilot/legacy_test_contract.md" 2>/dev/null || true
+fi
+if [ -f "$REPO_DIR/engine/auto_solver_pipeline.py" ]; then
+    python3 "$REPO_DIR/engine/auto_solver_pipeline.py" --workspace "$WORKSPACE_ROOT" 2>/dev/null || true
+fi
+if [ -f "$REPO_DIR/engine/pre_opt_diagnostician.py" ]; then
+    python3 "$REPO_DIR/engine/pre_opt_diagnostician.py" --workspace "$WORKSPACE_ROOT" 2>/dev/null || true
+fi
+if [ -f "$REPO_DIR/engine/optimizer_menu.py" ]; then
+    python3 "$REPO_DIR/engine/optimizer_menu.py" --workspace "$WORKSPACE_ROOT" --propose 2>/dev/null || true
+fi
+echo " -> Saved scan, profile, test contract, pre-opt diagnosis, optimizer proposal & initial output/result.json"
 
 # 5. 제출용 문서 초안 생성 (덮어쓰기 방지)
 echo "[5/5] Preparing submission document templates..."
